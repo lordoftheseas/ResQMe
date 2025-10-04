@@ -1,49 +1,47 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import MapComponent from './MapComponent';
 import { Alert } from '../types';
+import { MapComponentRef } from './MapComponentClient';
 
 interface DashboardScreenProps {
   onLogout: () => void;
 }
 
 export default function DashboardScreen({ onLogout }: DashboardScreenProps) {
-  const [alerts, setAlerts] = useState<Alert[]>([]);
+  const mapRef = useRef<MapComponentRef>(null);
+  
+  // Initialize with mock data immediately to prevent loading delays
+  const [alerts, setAlerts] = useState<Alert[]>([
+    {
+      id: 1,
+      userId: 'User_001',
+      gps: { lat: 42.3736 + 0.01, lon: -71.1097 + 0.01 },
+      receivedAt: new Date().toISOString(),
+      synced: true,
+      batteryLevel: 85
+    },
+    {
+      id: 2,
+      userId: 'User_002',
+      gps: { lat: 42.3736 - 0.005, lon: -71.1097 + 0.02 },
+      receivedAt: new Date(Date.now() - 5 * 60 * 1000).toISOString(),
+      synced: true,
+      batteryLevel: 42
+    },
+    {
+      id: 3,
+      userId: 'User_003',
+      gps: { lat: 42.3736 + 0.02, lon: -71.1097 - 0.01 },
+      receivedAt: new Date(Date.now() - 15 * 60 * 1000).toISOString(),
+      synced: false,
+      batteryLevel: 78
+    }
+  ]);
   const [broadcastMessage, setBroadcastMessage] = useState('');
   const [isOnline, setIsOnline] = useState(true);
   const [selectedAlert, setSelectedAlert] = useState<Alert | null>(null);
-
-  // Mock data for demonstration
-  useEffect(() => {
-    const mockAlerts: Alert[] = [
-      {
-        id: 1,
-        userId: 'User_001',
-        gps: { lat: 42.3736 + 0.01, lon: -71.1097 + 0.01 },
-        receivedAt: new Date().toISOString(),
-        synced: true,
-        batteryLevel: 85
-      },
-      {
-        id: 2,
-        userId: 'User_002',
-        gps: { lat: 42.3736 - 0.005, lon: -71.1097 + 0.02 },
-        receivedAt: new Date(Date.now() - 5 * 60 * 1000).toISOString(),
-        synced: true,
-        batteryLevel: 42
-      },
-      {
-        id: 3,
-        userId: 'User_003',
-        gps: { lat: 42.3736 + 0.02, lon: -71.1097 - 0.01 },
-        receivedAt: new Date(Date.now() - 15 * 60 * 1000).toISOString(),
-        synced: false,
-        batteryLevel: 78
-      }
-    ];
-    setAlerts(mockAlerts);
-  }, []);
 
   const handleBroadcast = async () => {
     if (!broadcastMessage.trim()) {
@@ -65,6 +63,10 @@ export default function DashboardScreen({ onLogout }: DashboardScreenProps) {
 
   const handleAlertClick = (alert: Alert) => {
     setSelectedAlert(alert);
+    // Open popup on map for the clicked alert
+    if (mapRef.current) {
+      mapRef.current.openPopupForAlert(alert);
+    }
   };
 
   const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
@@ -141,7 +143,7 @@ export default function DashboardScreen({ onLogout }: DashboardScreenProps) {
             <p className="text-sm text-gray-400">Real-time location of distress signals</p>
           </div>
           <div className="flex-1 bg-gray-700">
-            <MapComponent alerts={alerts} onAlertClick={handleAlertClick} />
+            <MapComponent ref={mapRef} alerts={alerts} onAlertClick={handleAlertClick} />
           </div>
         </div>
 

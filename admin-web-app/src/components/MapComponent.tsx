@@ -1,7 +1,9 @@
 'use client';
 
 import dynamic from 'next/dynamic';
+import { forwardRef } from 'react';
 import { Alert } from '../types';
+import { MapComponentRef } from './MapComponentClient';
 
 // Dynamically import the entire map component to avoid SSR issues
 const DynamicMap = dynamic(() => import('./MapComponentClient'), { 
@@ -18,6 +20,10 @@ interface MapComponentProps {
   onAlertClick?: (alert: Alert) => void;
 }
 
-export default function MapComponent({ alerts, onAlertClick }: MapComponentProps) {
-  return <DynamicMap alerts={alerts} onAlertClick={onAlertClick} />;
-}
+const MapComponent = forwardRef<MapComponentRef, MapComponentProps>(({ alerts, onAlertClick }, ref) => {
+  return <DynamicMap ref={ref} alerts={alerts} onAlertClick={onAlertClick} />;
+});
+
+MapComponent.displayName = 'MapComponent';
+
+export default MapComponent;

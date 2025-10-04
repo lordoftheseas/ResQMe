@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useRef, useState, useCallback, useImperativeHandle, forwardRef } from 'react';
 import { Alert } from '../types';
 
 interface MapComponentProps {
@@ -8,12 +8,117 @@ interface MapComponentProps {
   onAlertClick?: (alert: Alert) => void;
 }
 
-export default function MapComponentClient({ alerts, onAlertClick }: MapComponentProps) {
+export interface MapComponentRef {
+  openPopupForAlert: (alert: Alert) => void;
+}
+
+const MapComponentClient = forwardRef<MapComponentRef, MapComponentProps>(({ alerts, onAlertClick }, ref) => {
   const [isMounted, setIsMounted] = useState(false);
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<any>(null);
   const markersRef = useRef<any[]>([]);
   const isInitializedRef = useRef(false);
+
+  // Helper function to add markers to map
+  const addMarkersToMap = useCallback((L: any) => {
+    if (!mapRef.current) return;
+
+    // Clear existing markers
+    markersRef.current.forEach(marker => marker.remove());
+    markersRef.current = [];
+
+    // Add new markers
+    alerts
+      .filter(alert => alert.gps)
+      .forEach(alert => {
+        const marker = L.marker([alert.gps!.lat, alert.gps!.lon])
+          .addTo(mapRef.current)
+          .bindPopup(`
+            <div>
+              <b>User:</b> ${alert.userId}<br />
+              <b>Time:</b> ${new Date(alert.receivedAt).toLocaleTimeString()}
+              ${alert.batteryLevel ? `<br /><b>Battery:</b> ${alert.batteryLevel}%` : ''}
+            </div>
+          `);
+        
+        marker.on('click', () => {
+          console.log('Marker clicked, zooming to:', alert.gps!.lat, alert.gps!.lon);
+          // Zoom to marker
+          mapRef.current.flyTo([alert.gps!.lat, alert.gps!.lon], 15);
+          
+          if (onAlertClick) {
+            onAlertClick(alert);
+          }
+        });
+        
+        markersRef.current.push(marker);
+      });
+
+    // Fit bounds if there are alerts
+    if (alerts.filter(alert => alert.gps).length > 0) {
+      const bounds = alerts
+        .filter(alert => alert.gps)
+        .map(alert => [alert.gps!.lat, alert.gps!.lon] as [number, number]);
+      
+      if (bounds.length > 0) {
+        mapRef.current.fitBounds(bounds, { padding: [20, 20] });
+      }
+    }
+  }, [alerts, onAlertClick]);
+
+  // Function to open popup for a specific alert
+  const openPopupForAlert = useCallback((alert: Alert) => {
+    if (!mapRef.current || !alert.gps) return;
+    
+    console.log('Opening popup for alert:', alert.userId, 'at', alert.gps);
+    console.log('Available markers:', markersRef.current.length);
+    
+    const marker = markersRef.current.find(m => {
+      const markerPos = m.getLatLng();
+      const isMatch = Math.abs(markerPos.lat - alert.gps!.lat) < 0.0001 && 
+             Math.abs(markerPos.lng - alert.gps!.lon) < 0.0001;
+      console.log('Checking marker at', markerPos, 'vs alert at', alert.gps, 'match:', isMatch);
+      return isMatch;
+    });
+    
+    console.log('Found marker:', !!marker);
+    
+    if (marker) {
+      // Close all other popups first
+      markersRef.current.forEach(m => m.closePopup());
+      
+      // Force the popup to open immediately with multiple attempts
+      const openPopup = () => {
+        if (marker && mapRef.current) {
+          try {
+            marker.openPopup();
+            mapRef.current.invalidateSize();
+            console.log('Popup opened for alert:', alert.userId);
+          } catch (error) {
+            console.error('Error opening popup:', error);
+          }
+        }
+      };
+      
+      // Try to open immediately
+      openPopup();
+      
+      // Try again after a very short delay to ensure it opens
+      setTimeout(openPopup, 10);
+      
+      // Start the flyTo animation
+      mapRef.current.flyTo([alert.gps!.lat, alert.gps!.lon], 15);
+      
+      // Ensure popup stays visible during and after animation
+      setTimeout(openPopup, 100);
+      setTimeout(openPopup, 300);
+    }
+  }, []);
+
+  // Expose the function through ref
+  useImperativeHandle(ref, () => ({
+    openPopupForAlert
+  }), [openPopupForAlert]);
 
   useEffect(() => {
     setIsMounted(true);
@@ -42,6 +147,9 @@ export default function MapComponentClient({ alerts, onAlertClick }: MapComponen
       }).addTo(mapRef.current);
 
       isInitializedRef.current = true;
+      
+      // Add markers immediately after map initialization
+      addMarkersToMap(L.default);
     });
   }, [isMounted]);
 
@@ -51,49 +159,9 @@ export default function MapComponentClient({ alerts, onAlertClick }: MapComponen
 
     // Import Leaflet to get the marker function
     import('leaflet').then((L) => {
-      // Clear existing markers
-      markersRef.current.forEach(marker => marker.remove());
-      markersRef.current = [];
-
-      // Add new markers
-      alerts
-        .filter(alert => alert.gps)
-        .forEach(alert => {
-          const marker = L.default.marker([alert.gps!.lat, alert.gps!.lon])
-            .addTo(mapRef.current)
-            .bindPopup(`
-              <div>
-                <b>User:</b> ${alert.userId}<br />
-                <b>Time:</b> ${new Date(alert.receivedAt).toLocaleTimeString()}
-                ${alert.batteryLevel ? `<br /><b>Battery:</b> ${alert.batteryLevel}%` : ''}
-              </div>
-            `);
-          
-          marker.on('click', () => {
-            console.log('Marker clicked, zooming to:', alert.gps!.lat, alert.gps!.lon);
-            // Zoom to marker
-            mapRef.current.flyTo([alert.gps!.lat, alert.gps!.lon], 15);
-            
-            if (onAlertClick) {
-              onAlertClick(alert);
-            }
-          });
-          
-          markersRef.current.push(marker);
-        });
-
-      // Fit bounds if there are alerts
-      if (alerts.filter(alert => alert.gps).length > 0) {
-        const bounds = alerts
-          .filter(alert => alert.gps)
-          .map(alert => [alert.gps!.lat, alert.gps!.lon] as [number, number]);
-        
-        if (bounds.length > 0) {
-          mapRef.current.fitBounds(bounds, { padding: [20, 20] });
-        }
-      }
+      addMarkersToMap(L.default);
     });
-  }, [alerts, onAlertClick]);
+  }, [alerts, onAlertClick, addMarkersToMap]);
 
   // Cleanup on unmount
   useEffect(() => {
@@ -117,4 +185,8 @@ export default function MapComponentClient({ alerts, onAlertClick }: MapComponen
   }
 
   return <div ref={mapContainerRef} className="h-full w-full" />;
-}
+});
+
+MapComponentClient.displayName = 'MapComponentClient';
+
+export default MapComponentClient;
