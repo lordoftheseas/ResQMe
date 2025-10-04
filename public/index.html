@@ -159,75 +159,92 @@
             const stopScanButton = document.getElementById('stop-scanning-button');
             const logoutButton = document.getElementById('logout-button');
             
-            // Auto-login after 2 seconds
-            setTimeout(() => {
-                console.log('Auto-login triggered');
+            // Keep track of map instance for proper cleanup
+            let mapInstance = null;
+            
+            // Function to initialize dashboard and map
+            function initializeDashboard() {
+                console.log('Auto-proceeding to dashboard');
+                scanningScreen.classList.add('hidden');
+                dashboardScreen.classList.remove('hidden');
+                
+                // Clean up existing map if any
+                if (mapInstance) {
+                    mapInstance.remove();
+                }
+                
+                // Initialize map
+                mapInstance = L.map('map-component').setView([42.3736, -71.1097], 13);
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                }).addTo(mapInstance);
+                
+                // Add some sample markers
+                const sampleAlerts = [
+                    { id: 1, userId: 'User_001', gps: { lat: 42.3736 + 0.01, lon: -71.1097 + 0.01 } },
+                    { id: 2, userId: 'User_002', gps: { lat: 42.3736 - 0.005, lon: -71.1097 + 0.02 } },
+                    { id: 3, userId: 'User_003', gps: { lat: 42.3736 + 0.02, lon: -71.1097 - 0.01 } }
+                ];
+                
+                // Clear and populate nearby list
+                const nearbyList = document.getElementById('nearby-list');
+                nearbyList.innerHTML = '';
+                
+                sampleAlerts.forEach(alert => {
+                    const marker = L.marker([alert.gps.lat, alert.gps.lon]);
+                    marker.bindPopup(`<b>User:</b> ${alert.userId}`);
+                    marker.addTo(mapInstance);
+                    
+                    const alertDiv = document.createElement('div');
+                    alertDiv.className = 'p-3 rounded-md cursor-pointer border-l-4 bg-gray-800 hover:bg-gray-700';
+                    alertDiv.style.borderColor = '#10B981';
+                    alertDiv.innerHTML = `
+                        <div class="flex justify-between items-center">
+                            <p class="font-bold text-sm">${alert.userId}</p>
+                            <p class="text-xs text-gray-400">${new Date().toLocaleTimeString()}</p>
+                        </div>
+                        <p class="text-xs text-gray-500">Lat: ${alert.gps.lat.toFixed(4)}, Lon: ${alert.gps.lon.toFixed(4)}</p>
+                    `;
+                    alertDiv.addEventListener('click', () => {
+                        mapInstance.flyTo([alert.gps.lat, alert.gps.lon], 15);
+                    });
+                    nearbyList.appendChild(alertDiv);
+                });
+            }
+            
+            // Simulate scanning progress and auto-proceed after delay
+            function startScanning() {
+                console.log('Starting scan sequence');
                 loginScreen.classList.add('hidden');
                 scanningScreen.classList.remove('hidden');
                 
-                // Auto-proceed to dashboard after 3 seconds
+                // Auto-proceed after 5 seconds of scanning
                 setTimeout(() => {
-                    console.log('Auto-proceeding to dashboard');
-                    scanningScreen.classList.add('hidden');
-                    dashboardScreen.classList.remove('hidden');
-                    
-                    // Initialize map
-                    const map = L.map('map-component').setView([42.3736, -71.1097], 13);
-                    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-                    }).addTo(map);
-                    
-                    // Add some sample markers
-                    const sampleAlerts = [
-                        { id: 1, userId: 'User_001', gps: { lat: 42.3736 + 0.01, lon: -71.1097 + 0.01 } },
-                        { id: 2, userId: 'User_002', gps: { lat: 42.3736 - 0.005, lon: -71.1097 + 0.02 } },
-                        { id: 3, userId: 'User_003', gps: { lat: 42.3736 + 0.02, lon: -71.1097 - 0.01 } }
-                    ];
-                    
-                    sampleAlerts.forEach(alert => {
-                        const marker = L.marker([alert.gps.lat, alert.gps.lon]);
-                        marker.bindPopup(`<b>User:</b> ${alert.userId}`);
-                        marker.addTo(map);
-                        
-                        // Add to nearby list
-                        const nearbyList = document.getElementById('nearby-list');
-                        nearbyList.innerHTML = '';
-                        const alertDiv = document.createElement('div');
-                        alertDiv.className = 'p-3 rounded-md cursor-pointer border-l-4 bg-gray-800 hover:bg-gray-700';
-                        alertDiv.style.borderColor = '#10B981';
-                        alertDiv.innerHTML = `
-                            <div class="flex justify-between items-center">
-                                <p class="font-bold text-sm">${alert.userId}</p>
-                                <p class="text-xs text-gray-400">${new Date().toLocaleTimeString()}</p>
-                            </div>
-                            <p class="text-xs text-gray-500">Lat: ${alert.gps.lat.toFixed(4)}, Lon: ${alert.gps.lon.toFixed(4)}</p>
-                        `;
-                        alertDiv.addEventListener('click', () => {
-                            map.flyTo([alert.gps.lat, alert.gps.lon], 15);
-                        });
-                        nearbyList.appendChild(alertDiv);
-                    });
-                }, 3000);
-            }, 2000);
+                    console.log('Auto-proceeding to dashboard after scan');
+                    initializeDashboard();
+                }, 5000);
+            }
             
-            // Manual form submission
+            // Manual form submission now triggers scanning sequence
             loginForm.addEventListener('submit', (e) => {
                 e.preventDefault();
                 console.log('Manual login triggered');
-                loginScreen.classList.add('hidden');
-                scanningScreen.classList.remove('hidden');
+                startScanning();
             });
             
-            // Manual scan stop
+            // Keep manual stop button for impatient users
             stopScanButton.addEventListener('click', () => {
                 console.log('Manual scan stop triggered');
-                scanningScreen.classList.add('hidden');
-                dashboardScreen.classList.remove('hidden');
+                initializeDashboard();
             });
             
-            // Logout
+            // Logout (now cleans up map)
             logoutButton.addEventListener('click', () => {
                 console.log('Logout triggered');
+                if (mapInstance) {
+                    mapInstance.remove();
+                    mapInstance = null;
+                }
                 dashboardScreen.classList.add('hidden');
                 loginScreen.classList.remove('hidden');
             });
