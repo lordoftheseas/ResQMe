@@ -1,3 +1,11 @@
+export interface Message {
+    id: number;
+    content: string;
+    timestamp: string;
+    isFromUser: boolean; // true if from the user, false if from admin
+    messageType: 'text' | 'location' | 'status';
+}
+
 export interface Alert {
     id: number;
     userId: string;
@@ -10,6 +18,9 @@ export interface Alert {
     synced: boolean;
     messageType?: string;
     batteryLevel?: number;
+    isSOS?: boolean;
+    message?: string;
+    messageHistory?: Message[];
 }
 
 export interface User {

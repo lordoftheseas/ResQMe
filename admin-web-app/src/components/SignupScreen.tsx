@@ -155,7 +155,7 @@ export default function SignupScreen({ onSignupSuccess, onBackToLogin }: SignupS
                 value={formData.phone}
                 onChange={handleInputChange}
                 className="w-full px-3 py-2 border border-gray-700 bg-gray-900 text-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                placeholder="+1 (555) 123-4567"
+                placeholder="123424533"
               />
             </div>
             

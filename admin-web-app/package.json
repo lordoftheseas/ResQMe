@@ -9,20 +9,21 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@lottiefiles/dotlottie-react": "^0.17.4",
+    "@supabase/supabase-js": "^2.58.0",
+    "leaflet": "^1.9.4",
+    "next": "15.5.4",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "next": "15.5.4",
-    "leaflet": "^1.9.4",
-    "react-leaflet": "^4.2.1",
-    "@supabase/supabase-js": "^2.58.0"
+    "react-leaflet": "^4.2.1"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
+    "@tailwindcss/postcss": "^4",
+    "@types/leaflet": "^1.9.8",
     "@types/node": "^20",
     "@types/react": "^18",
     "@types/react-dom": "^18",
-    "@types/leaflet": "^1.9.8",
-    "@tailwindcss/postcss": "^4",
     "eslint": "^9",
     "eslint-config-next": "15.5.4",
     "tailwindcss": "^4",
