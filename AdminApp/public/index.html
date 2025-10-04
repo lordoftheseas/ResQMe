@@ -263,9 +263,45 @@
             const loginScreen = document.getElementById('login-screen');
             const scanningScreen = document.getElementById('scanning-screen');
             const dashboardScreen = document.getElementById('dashboard-screen');
+            const signupModal = document.getElementById('signup-modal');
             const loginForm = document.getElementById('login-form');
             const stopScanButton = document.getElementById('stop-scanning-button');
             const logoutButton = document.getElementById('logout-button');
+            
+            // Sign up modal controls
+            const showSignupBtn = document.getElementById('show-signup-btn');
+            const closeSignupModal = document.getElementById('close-signup-modal');
+            const cancelSignupBtn = document.getElementById('cancel-signup');
+            const signupForm = document.getElementById('signup-form');
+            
+            // Show signup modal
+            showSignupBtn.addEventListener('click', () => {
+                signupModal.classList.remove('hidden');
+            });
+            
+            // Close signup modal
+            function closeModal() {
+                signupModal.classList.add('hidden');
+                signupForm.reset(); // Clear the form
+            }
+            
+            closeSignupModal.addEventListener('click', closeModal);
+            cancelSignupBtn.addEventListener('click', closeModal);
+            
+            // Close modal if clicking outside
+            signupModal.addEventListener('click', (e) => {
+                if (e.target === signupModal) {
+                    closeModal();
+                }
+            });
+            
+            // Handle signup form submission
+            signupForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                // Add your signup logic here
+                console.log('Sign up submitted');
+                closeModal();
+            });
             
             // Keep track of map instance for proper cleanup
             let mapInstance = null;
