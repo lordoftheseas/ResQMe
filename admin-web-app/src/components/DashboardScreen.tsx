@@ -169,6 +169,7 @@ export default function DashboardScreen({ onLogout }: DashboardScreenProps) {
   const [expandedMessage, setExpandedMessage] = useState<number | null>(null);
   const [selectedChatUser, setSelectedChatUser] = useState<Alert | null>(null);
   const [newMessage, setNewMessage] = useState('');
+  const [isSyncing, setIsSyncing] = useState(false);
 
   const handleBroadcast = async () => {
     if (!broadcastMessage.trim()) {
@@ -183,9 +184,22 @@ export default function DashboardScreen({ onLogout }: DashboardScreenProps) {
   };
 
   const handleSync = async () => {
-    // Mock sync - replace with actual API call
-    console.log('Syncing data...');
-    alert('Data synced successfully!');
+    setIsSyncing(true);
+    
+    try {
+      // Mock sync - replace with actual API call
+      console.log('Syncing data...');
+      
+      // Simulate API call delay
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      alert('Data synced successfully!');
+    } catch (error) {
+      console.error('Sync failed:', error);
+      alert('Sync failed. Please try again.');
+    } finally {
+      setIsSyncing(false);
+    }
   };
 
   const handleAlertClick = (alert: Alert) => {
@@ -294,9 +308,21 @@ export default function DashboardScreen({ onLogout }: DashboardScreenProps) {
           <div className="flex items-center space-x-4">
             <button
               onClick={handleSync}
-              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm font-medium"
+              disabled={isSyncing}
+              className={`px-4 py-2 rounded-md text-sm font-medium flex items-center space-x-2 ${
+                isSyncing 
+                  ? 'bg-blue-500 cursor-not-allowed' 
+                  : 'bg-blue-600 hover:bg-blue-700'
+              }`}
             >
-              Sync Data
+              {isSyncing ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                  <span>Syncing...</span>
+                </>
+              ) : (
+                <span>Sync Data</span>
+              )}
             </button>
             <button
               onClick={onLogout}
