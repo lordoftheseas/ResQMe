@@ -34,7 +34,7 @@ export const auth = {
             first_name: userData.firstName,
             last_name: userData.lastName,
             phone: userData.phone,
-            is_admin: false
+            is_admin: true
           });
 
         if (profileError) {
