@@ -1,6 +1,6 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import React, { useEffect, useState } from 'react';
-import { Alert, Dimensions, ScrollView, StyleSheet, TouchableOpacity, Vibration, View } from 'react-native';
+import { Alert, Dimensions, KeyboardAvoidingView, Modal, Platform, ScrollView, StyleSheet, TextInput, TouchableOpacity, Vibration, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -13,6 +13,8 @@ export default function HomeScreen() {
   const [isSOSActive, setIsSOSActive] = useState(false);
   const [lastSyncTime, setLastSyncTime] = useState<Date | null>(null);
   const [syncStatus, setSyncStatus] = useState<'idle' | 'syncing' | 'success' | 'error'>('idle');
+  const [isMessageModalVisible, setIsMessageModalVisible] = useState(false);
+  const [message, setMessage] = useState('');
 
   useEffect(() => {
     setLastSyncTime(new Date());
@@ -21,14 +23,11 @@ export default function HomeScreen() {
   const handleSendSOS = async () => {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 5000);
-    const response = await fetch(`http://10.220.229.1/submit_sos?msg=SOSHelpNeeded`, {
+    const response = await fetch(`http://10.220.229.1/submit_sos?msg=SOS%20Help%20Needed`, {
       method: 'GET',
       signal: controller.signal,
     });
     clearTimeout(timeoutId);
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
     const data = await response.json();
     console.log(data);
   };
@@ -100,19 +99,42 @@ export default function HomeScreen() {
   };   
 
   const handleHelpMessage = () => {
-    Alert.alert(
-      'Send Help Message',
-      'Send a help message to your emergency contacts?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { 
-          text: 'Send Help', 
-          onPress: () => {
-            Alert.alert('Help Sent', 'Help message has been sent to your emergency contacts.');
-          }
-        }
-      ]
-    );
+    setIsMessageModalVisible(true);
+  };
+
+  const sendHelpMessage = async () => {
+    if (!message.trim()) {
+      Alert.alert('Error', 'Please enter a message before sending.');
+      return;
+    }
+
+    console.log(message);
+
+    setIsMessageModalVisible(false);
+    
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000);
+    
+    try {
+      const response = await fetch(`http://10.220.229.1/submit_sos?msg=${encodeURIComponent(message)}`, {
+        method: 'GET',
+        signal: controller.signal,
+      });
+      clearTimeout(timeoutId);
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      console.log(data);
+      
+      Alert.alert('Help Sent', 'Help message has been sent to your emergency contacts.');
+      setMessage(''); // Clear the message after sending
+    } catch (error) {
+      console.error('Error sending help message:', error);
+      Alert.alert('Error', 'Failed to send help message. Please try again.');
+    }
   };
 
   const handleLogout = async () => {
@@ -240,6 +262,57 @@ export default function HomeScreen() {
           </TouchableOpacity>
         </ThemedView>
       </ScrollView>
+
+      {/* Message Recording Modal */}
+      <Modal
+        visible={isMessageModalVisible}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setIsMessageModalVisible(false)}
+      >
+        <KeyboardAvoidingView 
+          style={styles.modalOverlay}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
+        >
+          <View style={styles.modalContent}>
+            <ThemedText style={styles.modalTitle}>Record Help Message</ThemedText>
+            <ThemedText style={styles.modalSubtitle}>
+              Enter your emergency message below:
+            </ThemedText>
+            
+            <TextInput
+              style={styles.messageInput}
+              placeholder="Type your emergency message here..."
+              placeholderTextColor="#999"
+              multiline={true}
+              numberOfLines={4}
+              value={message}
+              onChangeText={setMessage}
+              autoFocus={true}
+            />
+            
+            <View style={styles.modalButtons}>
+              <TouchableOpacity
+                style={[styles.modalButton, styles.cancelButton]}
+                onPress={() => {
+                  setIsMessageModalVisible(false);
+                  setMessage('');
+                }}
+              >
+                <ThemedText style={styles.cancelButtonText}>Cancel</ThemedText>
+              </TouchableOpacity>
+              
+              <TouchableOpacity
+                style={[styles.modalButton, styles.sendButton]}
+                onPress={sendHelpMessage}
+              >
+                <ThemedText style={styles.sendButtonText}>Send Help</ThemedText>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
     </ThemedView>
   );
 }
@@ -404,5 +477,82 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '500',
     color: '#2d3436',
+  },
+  // Modal styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  modalContent: {
+    backgroundColor: '#ffffff',
+    borderRadius: 16,
+    padding: 24,
+    width: '100%',
+    maxWidth: 400,
+    maxHeight: '80%',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#2d3436',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  modalSubtitle: {
+    fontSize: 14,
+    color: '#636e72',
+    marginBottom: 20,
+    textAlign: 'center',
+  },
+  messageInput: {
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 8,
+    padding: 12,
+    fontSize: 16,
+    color: '#2d3436',
+    backgroundColor: '#f8f9fa',
+    textAlignVertical: 'top',
+    minHeight: 80,
+    maxHeight: 120,
+    marginBottom: 20,
+  },
+  modalButtons: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  modalButton: {
+    flex: 1,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  cancelButton: {
+    backgroundColor: '#f8f9fa',
+    borderWidth: 1,
+    borderColor: '#ddd',
+  },
+  sendButton: {
+    backgroundColor: '#e74c3c',
+  },
+  cancelButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#636e72',
+  },
+  sendButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#ffffff',
   },
 });

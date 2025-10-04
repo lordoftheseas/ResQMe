@@ -3,19 +3,23 @@
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
-import LoginScreen from '@/components/LoginScreen';
-import SignupScreen from '@/components/SignupScreen';
+import DashboardScreen from '@/components/DashboardScreen';
 
-export default function Home() {
-  const { user, isLoading } = useAuth();
+export default function Dashboard() {
+  const { user, isLoading, signOut } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
-    if (!isLoading && user) {
-      // User is authenticated - redirect to dashboard
-      router.push('/dashboard');
+    if (!isLoading && !user) {
+      // User is not authenticated - redirect to login
+      router.push('/');
     }
   }, [user, isLoading, router]);
+
+  const handleLogout = async () => {
+    await signOut();
+    router.push('/');
+  };
 
   // Show loading during auth check
   if (isLoading) {
@@ -26,10 +30,14 @@ export default function Home() {
     );
   }
 
-  // Show login screen if not authenticated
+  // Show login redirect if not authenticated
+  if (!user) {
+    return null; // Will redirect via useEffect
+  }
+
   return (
     <div className="h-screen bg-gray-900 text-gray-200 font-sans overflow-hidden">
-      <LoginScreen onLoginSuccess={() => router.push('/dashboard')} />
+      <DashboardScreen onLogout={handleLogout} />
     </div>
   );
 }
