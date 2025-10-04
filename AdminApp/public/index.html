@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full bg-gray-900">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ResQMe Test</title>
+    
+    <!-- Leaflet.js for Mapping -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    
+    <link rel="stylesheet" href="https://rsms.me/inter/inter.css">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @keyframes radar-spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .animate-radar-spin {
+            animation: radar-spin 2s linear infinite;
+        }
+    </style>
+</head>
+<body class="h-full text-gray-200 font-sans overflow-hidden">
+    
+    <div id="app-container" class="h-screen flex flex-col">
+
+        <!-- Login Screen -->
+        <div id="login-screen" class="flex flex-col items-center justify-center h-full bg-gray-900">
+            <div class="w-full max-w-md p-8 space-y-8 bg-gray-800 rounded-lg shadow-xl">
+                <div>
+                    <h2 class="mt-6 text-center text-3xl font-extrabold text-white">ResQMe Admin Console</h2>
+                    <p class="mt-2 text-center text-sm text-gray-400">Sign in to your account</p>
+                </div>
+                <form id="login-form" class="mt-8 space-y-6">
+                    <div class="space-y-4">
+                        <div>
+                            <label for="email-address" class="block text-sm font-medium text-gray-300 mb-2">Email address</label>
+                            <input id="email-address" name="email" type="email" required class="appearance-none relative block w-full px-3 py-2 border border-gray-700 bg-gray-900 text-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" placeholder="Enter your email">
+                        </div>
+                        <div>
+                            <label for="password" class="block text-sm font-medium text-gray-300 mb-2">Password</label>
+                            <div class="relative">
+                                <input id="password" name="password" type="password" required class="appearance-none relative block w-full px-3 py-2 pr-10 border border-gray-700 bg-gray-900 text-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" placeholder="Enter your password">
+                                <button type="button" id="toggle-password" class="absolute inset-y-0 right-0 pr-3 flex items-center">
+                                    <svg class="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center">
+                            <input id="remember-me" name="remember-me" type="checkbox" class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded">
+                            <label for="remember-me" class="ml-2 block text-sm text-gray-300">Remember me</label>
+                        </div>
+                        <div class="text-sm">
+                            <a href="#" class="font-medium text-indigo-400 hover:text-indigo-300">Forgot your password?</a>
+                        </div>
+                    </div>
+
+                    <div class="flex space-x-4">
+                        <button type="submit" class="flex-1 group relative flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                            Sign In
+                        </button>
+                        <button id="show-signup-btn" type="button" class="flex-1 group relative flex justify-center py-2 px-4 border border-gray-600 text-sm font-medium rounded-md text-gray-300 bg-gray-700 hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                            Sign Up
+                        </button>
+                    </div>
+                    
+                </form>
+            </div>
+        </div>
+
+        <!-- Signup Modal -->
+        <div id="signup-modal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+            <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-gray-800">
+                <div class="mt-3">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="text-lg font-medium text-white">Create Account</h3>
+                        <button id="close-signup-modal" class="text-gray-400 hover:text-gray-300">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                            </svg>
+                        </button>
+                    </div>
+                    
+                    <form id="signup-form" class="space-y-4">
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label for="signup-first-name" class="block text-sm font-medium text-gray-300 mb-1">First Name</label>
+                                <input id="signup-first-name" name="firstName" type="text" required class="w-full px-3 py-2 border border-gray-700 bg-gray-900 text-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 text-sm" placeholder="John">
+                            </div>
+                            <div>
+                                <label for="signup-last-name" class="block text-sm font-medium text-gray-300 mb-1">Last Name</label>
+                                <input id="signup-last-name" name="lastName" type="text" required class="w-full px-3 py-2 border border-gray-700 bg-gray-900 text-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 text-sm" placeholder="Doe">
+                            </div>
+                        </div>
+                        
+                        <div>
+                            <label for="signup-email" class="block text-sm font-medium text-gray-300 mb-1">Email Address</label>
+                            <input id="signup-email" name="email" type="email" required class="w-full px-3 py-2 border border-gray-700 bg-gray-900 text-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 text-sm" placeholder="john.doe@example.com">
+                        </div>
+                        
+                        <div>
+                            <label for="signup-phone" class="block text-sm font-medium text-gray-300 mb-1">Phone Number</label>
+                            <input id="signup-phone" name="phone" type="tel" class="w-full px-3 py-2 border border-gray-700 bg-gray-900 text-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 text-sm" placeholder="+1 (555) 123-4567">
+                        </div>
+                        
+                        <div>
+                            <label for="signup-password" class="block text-sm font-medium text-gray-300 mb-1">Password</label>
+                            <div class="relative">
+                                <input id="signup-password" name="password" type="password" required class="w-full px-3 py-2 pr-10 border border-gray-700 bg-gray-900 text-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 text-sm" placeholder="Create a strong password">
+                                <button type="button" id="toggle-signup-password" class="absolute inset-y-0 right-0 pr-3 flex items-center">
+                                    <svg class="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                    </svg>
+                                </button>
+                            </div>
+                            <p class="mt-1 text-xs text-gray-400">Password must be at least 6 characters long</p>
+                        </div>
+                        
+                        <div>
+                            <label for="signup-confirm-password" class="block text-sm font-medium text-gray-300 mb-1">Confirm Password</label>
+                            <div class="relative">
+                                <input id="signup-confirm-password" name="confirmPassword" type="password" required class="w-full px-3 py-2 pr-10 border border-gray-700 bg-gray-900 text-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 text-sm" placeholder="Confirm your password">
+                                <button type="button" id="toggle-confirm-password" class="absolute inset-y-0 right-0 pr-3 flex items-center">
+                                    <svg class="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div class="flex items-center">
+                            <input id="signup-terms" name="terms" type="checkbox" required class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded">
+                            <label for="signup-terms" class="ml-2 block text-sm text-gray-300">
+                                I agree to the <a href="#" class="text-indigo-400 hover:text-indigo-300">Terms of Service</a> and <a href="#" class="text-indigo-400 hover:text-indigo-300">Privacy Policy</a>
+                            </label>
+                        </div>
+                        
+                        <div class="flex space-x-3 pt-4">
+                            <button type="button" id="cancel-signup" class="flex-1 px-4 py-2 bg-gray-600 text-white text-sm font-medium rounded-md hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500">
+                                Cancel
+                            </button>
+                            <button type="submit" class="flex-1 px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                                Create Account
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Scanning Screen -->
+        <div id="scanning-screen" class="hidden flex flex-col items-center justify-center h-full bg-gray-900">
+             <div class="relative w-64 h-64">
+                <div class="absolute inset-0 border-4 border-blue-500/30 rounded-full"></div>
+                <div class="absolute inset-2 border-4 border-blue-500/30 rounded-full"></div>
+                <div class="absolute inset-4 border-4 border-blue-500/30 rounded-full"></div>
+                <div class="absolute w-1/2 h-1/2 bg-gradient-to-tr from-blue-500/50 to-transparent top-1/2 left-1/2 origin-top-left animate-radar-spin"></div>
+            </div>
+            <h2 class="text-2xl font-bold text-white mt-8">Scanning for Nearby Requests...</h2>
+            <div class="flex items-center space-x-4 mt-8">
+                <label class="flex items-center space-x-2 text-white">
+                    <input type="checkbox" id="auto-scan-toggle" class="w-4 h-4 text-blue-600 bg-gray-900 border-gray-600 rounded focus:ring-blue-500">
+                    <span>Auto-scan enabled</span>
+                </label>
+                <button id="stop-scanning-button" class="py-2 px-4 bg-red-600 hover:bg-red-700 rounded-md text-white font-semibold">
+                    Skip & View Dashboard
+                </button>
+            </div>
+        </div>
+
+        <!-- Main Dashboard Screen -->
+        <div id="dashboard-screen" class="hidden h-full flex flex-col bg-gray-900">
+            <!-- Header -->
+            <div class="bg-gray-800 border-b border-gray-700 px-6 py-4">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center space-x-4">
+                        <h1 class="text-2xl font-bold text-white">ResQMe Admin Dashboard</h1>
+                        <div id="online-status" class="px-3 py-1 rounded-full text-xs font-semibold bg-green-500">
+                            Online
+                        </div>
+                    </div>
+                    <div class="flex items-center space-x-4">
+                        <button id="sync-button" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm font-medium">
+                            Sync Data
+                        </button>
+                        <button id="logout-button" class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-md text-sm font-medium">
+                            Logout
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Main Content -->
+            <div class="flex-1 flex overflow-hidden">
+                <!-- Left Panel - Map -->
+                <div class="flex-1 flex flex-col">
+                    <div class="bg-gray-800 border-b border-gray-700 px-4 py-3">
+                        <h2 class="text-lg font-semibold text-white">Emergency Requests Map</h2>
+                        <p class="text-sm text-gray-400">Real-time location of distress signals</p>
+                    </div>
+                    <div id="map-component" class="flex-1 bg-gray-700"></div>
+                </div>
+
+                <!-- Right Panel -->
+                <div class="w-96 bg-gray-800 border-l border-gray-700 flex flex-col">
+                    <!-- Nearby People List -->
+                    <div class="flex-1 border-b border-gray-700">
+                        <div class="bg-gray-800 px-4 py-3 border-b border-gray-700">
+                            <h3 class="text-lg font-semibold text-white">Nearby People</h3>
+                            <p class="text-sm text-gray-400">Closest emergency requests</p>
+                        </div>
+                        <div id="nearby-list" class="flex-1 overflow-y-auto p-4 space-y-2">
+                            <p class="text-gray-500">No requests detected yet.</p>
+                        </div>
+                    </div>
+
+                    <!-- Message Broadcasting -->
+                    <div class="bg-gray-800 border-t border-gray-700 p-4">
+                        <h3 class="text-lg font-semibold text-white mb-3">Send Alert Message</h3>
+                        <div class="space-y-3">
+                            <textarea 
+                                id="broadcast-message-input" 
+                                placeholder="Enter emergency message to broadcast to all nearby devices..."
+                                class="w-full h-20 px-3 py-2 bg-gray-900 border border-gray-600 rounded-md text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                            ></textarea>
+                            <button 
+                                id="send-broadcast-button" 
+                                class="w-full py-2 px-4 bg-red-600 hover:bg-red-700 text-white rounded-md font-semibold transition-colors"
+                            >
+                                Send Emergency Alert
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // Mock API for testing
+        window.api = {
+            isOnline: () => true,
+            onNewAlert: (callback) => {},
+            onOnlineStatusChange: (callback) => {},
+            getAllAlerts: () => Promise.resolve([]),
+            broadcastMessage: (message) => Promise.resolve({ success: true, message: 'Message sent' }),
+            syncOnline: () => Promise.resolve({ success: true, message: 'Synced' })
+        };
+
+        // Simple test implementation
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log('Test page loaded');
+            
+            const loginScreen = document.getElementById('login-screen');
+            const scanningScreen = document.getElementById('scanning-screen');
+            const dashboardScreen = document.getElementById('dashboard-screen');
+            const loginForm = document.getElementById('login-form');
+            const stopScanButton = document.getElementById('stop-scanning-button');
+            const logoutButton = document.getElementById('logout-button');
+            
+            // Keep track of map instance for proper cleanup
+            let mapInstance = null;
+            
+            // Function to initialize dashboard and map
+            function initializeDashboard() {
+                console.log('Auto-proceeding to dashboard');
+                scanningScreen.classList.add('hidden');
+                dashboardScreen.classList.remove('hidden');
+                
+                // Clean up existing map if any
+                if (mapInstance) {
+                    mapInstance.remove();
+                }
+                
+                // Initialize map
+                mapInstance = L.map('map-component').setView([42.3736, -71.1097], 13);
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                }).addTo(mapInstance);
+                
+                // Add some sample markers
+                const sampleAlerts = [
+                    { id: 1, userId: 'User_001', gps: { lat: 42.3736 + 0.01, lon: -71.1097 + 0.01 } },
+                    { id: 2, userId: 'User_002', gps: { lat: 42.3736 - 0.005, lon: -71.1097 + 0.02 } },
+                    { id: 3, userId: 'User_003', gps: { lat: 42.3736 + 0.02, lon: -71.1097 - 0.01 } }
+                ];
+                
+                // Clear and populate nearby list
+                const nearbyList = document.getElementById('nearby-list');
+                nearbyList.innerHTML = '';
+                
+                sampleAlerts.forEach(alert => {
+                    const marker = L.marker([alert.gps.lat, alert.gps.lon]);
+                    marker.bindPopup(`<b>User:</b> ${alert.userId}`);
+                    marker.addTo(mapInstance);
+                    
+                    const alertDiv = document.createElement('div');
+                    alertDiv.className = 'p-3 rounded-md cursor-pointer border-l-4 bg-gray-800 hover:bg-gray-700';
+                    alertDiv.style.borderColor = '#10B981';
+                    alertDiv.innerHTML = `
+                        <div class="flex justify-between items-center">
+                            <p class="font-bold text-sm">${alert.userId}</p>
+                            <p class="text-xs text-gray-400">${new Date().toLocaleTimeString()}</p>
+                        </div>
+                        <p class="text-xs text-gray-500">Lat: ${alert.gps.lat.toFixed(4)}, Lon: ${alert.gps.lon.toFixed(4)}</p>
+                    `;
+                    alertDiv.addEventListener('click', () => {
+                        mapInstance.flyTo([alert.gps.lat, alert.gps.lon], 15);
+                    });
+                    nearbyList.appendChild(alertDiv);
+                });
+            }
+            
+            // Simulate scanning progress and auto-proceed after delay
+            function startScanning() {
+                console.log('Starting scan sequence');
+                loginScreen.classList.add('hidden');
+                scanningScreen.classList.remove('hidden');
+                
+                // Auto-proceed after 5 seconds of scanning
+                setTimeout(() => {
+                    console.log('Auto-proceeding to dashboard after scan');
+                    initializeDashboard();
+                }, 5000);
+            }
+            
+            // Manual form submission now triggers scanning sequence
+            loginForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                console.log('Manual login triggered');
+                startScanning();
+            });
+            
+            // Keep manual stop button for impatient users
+            stopScanButton.addEventListener('click', () => {
+                console.log('Manual scan stop triggered');
+                initializeDashboard();
+            });
+            
+            // Logout (now cleans up map)
+            logoutButton.addEventListener('click', () => {
+                console.log('Logout triggered');
+                if (mapInstance) {
+                    mapInstance.remove();
+                    mapInstance = null;
+                }
+                dashboardScreen.classList.add('hidden');
+                loginScreen.classList.remove('hidden');
+            });
+        });
+    </script>
+</body>
+</html>
