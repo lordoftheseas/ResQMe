@@ -26,27 +26,37 @@ export default function DashboardScreen({ onLogout }: DashboardScreenProps) {
   const [isSyncing, setIsSyncing] = useState(false);
 
   React.useEffect(() => {
-    console.log('DashboardScreen mounted');
     const fetchAlerts = async () => {
       const alerts = await SupabaseDB.getSosSignalswithUser();
-      console.log(alerts)
       setSosAlerts(alerts.data || []);
     };
     fetchAlerts();
-  }, []);
-
-  console.log(sosAlerts);
+  }, [sosAlerts]);
 
   const handleBroadcast = async () => {
     if (!broadcastMessage.trim()) {
       alert('Please enter a message to broadcast.');
       return;
+    }    
+    try {
+      const { data, error } = await SupabaseDB.createSosAlertInTable("ALERT: " + broadcastMessage);
+      
+      if (error) {
+        console.error('Error creating SOS alert:', error);
+        alert('Failed to send emergency alert. Please try again.');
+        return;
+      }
+      alert('Emergency alert sent successfully!');
+      setBroadcastMessage('');
+      
+      // Refresh the alerts list to show the new alert
+      const alerts = await SupabaseDB.getSosSignalswithUser();
+      setSosAlerts(alerts.data || []);
+      
+    } catch (error) {
+      console.error('Error sending emergency alert:', error);
+      alert('Failed to send emergency alert. Please try again.');
     }
-    
-    // Mock broadcast - replace with actual API call
-    console.log('Broadcasting message:', broadcastMessage);
-    alert('Message sent successfully!');
-    setBroadcastMessage('');
   };
 
   const handleAlertClick = (alert: SosAlert) => {

@@ -345,7 +345,7 @@ export class SupabaseDB {
   }
 
   /**
-   * Get SOS signals with user information (includes user details via join)
+   * Get all signals with user information (includes user details via join)
    */
   static async getSosSignalswithUser(): Promise<{ data: SosAlert[] | null; error: any }> {
     try {
@@ -372,17 +372,15 @@ export class SupabaseDB {
       }, []);
 
       // Filter for SOS messages and structure the data
+
+      // Structure the data for all signals
       const sosAlerts = uniqueSignals
-        .filter(signal => {
-          const messageWords = signal.message?.split(' ') || [];
-          return messageWords[0]?.toUpperCase() === 'SOS';
-        })
         .map(signal => ({
           id: signal.id || signal.device_id,
           device_id: signal.device_id,
           user_id: signal.user_id,
           message: signal.message,
-          type: 'sos' as const,
+          type: signal.type || 'sos' as const,
           status: signal.status as 'online' | 'offline',
           location: signal.sensors?.gps || null,
           created_at: signal.created_at,
@@ -560,6 +558,87 @@ export class SupabaseDB {
       return { data: null, error };
     }
   }
+
+  /**
+   * Create a new SOS alert
+   */
+  static async createSosAlert(alertData: {
+    device_id: string;
+    user_id: string;
+    message: string;
+    type: 'sos';
+    status: 'online' | 'offline';
+    location?: {
+      latitude: number;
+      longitude: number;
+    };
+  }) {
+    try {
+      const { data, error } = await supabase
+        .from('esp_signals')
+        .insert({
+          device_id: alertData.device_id,
+          user_id: alertData.user_id,
+          message: alertData.message,
+          type: alertData.type,
+          status: alertData.status,
+          sensors: alertData.location ? {
+            gps: {
+              latitude: alertData.location.latitude,
+              longitude: alertData.location.longitude
+            }
+          } : null,
+          created_at: new Date().toISOString()
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+      return { data, error: null };
+    } catch (error) {
+      return { data: null, error };
+    }
+  }
+
+  /**
+   * Create a broadcast message (admin alert)
+   */
+  static async createBroadcastMessage(message: string) {
+    try {
+      const { data, error } = await supabase
+        .from('esp_signals')
+        .insert({
+          message: message
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+      return { data, error: null };
+    } catch (error) {
+      return { data: null, error };
+    }
+  }
+
+  /**
+   * Create a SOS alert in sos_alerts table
+   */
+  static async createSosAlertInTable(message: string) {
+    try {
+      const { data, error } = await supabase
+        .from('sos_alerts')
+        .insert({
+          message: message
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+      return { data, error: null };
+    } catch (error) {
+      return { data: null, error };
+    }
+  }
 }
 
 export const {
@@ -584,5 +663,8 @@ export const {
   getUsersByBloodGroup,
   getUsersWithSpecialNeeds,
   createMultipleUsers,
-  updateMultipleUsers
+  updateMultipleUsers,
+  createSosAlert,
+  createBroadcastMessage,
+  createSosAlertInTable
 } = SupabaseDB;

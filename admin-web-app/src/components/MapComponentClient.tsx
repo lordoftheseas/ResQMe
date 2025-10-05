@@ -23,9 +23,6 @@ const MapComponentClient = forwardRef<MapComponentRef, MapComponentProps>(({ ale
   const addMarkersToMap = useCallback((L: any) => {
     if (!mapRef.current) return;
 
-    console.log('Adding markers to map, alerts:', alerts);
-    console.log('Alerts with location:', alerts.filter(alert => alert.gps || alert.location));
-
     // Clear existing markers
     markersRef.current.forEach(marker => marker.remove());
     markersRef.current = [];
@@ -41,10 +38,8 @@ const MapComponentClient = forwardRef<MapComponentRef, MapComponentProps>(({ ale
         const coords = alert.gps ? [alert.gps.lat, alert.gps.lon] : 
                       alert.location ? [alert.location.latitude, alert.location.longitude] : null;
         
-        console.log('Processing alert:', alert.id, 'coords:', coords);
         
         if (!coords) {
-          console.log('No coordinates found for alert:', alert.id);
           return;
         }
         
@@ -60,7 +55,6 @@ const MapComponentClient = forwardRef<MapComponentRef, MapComponentProps>(({ ale
           `);
         
         marker.on('click', () => {
-          console.log('Marker clicked, zooming to:', coords[0], coords[1]);
           // Zoom to marker
           mapRef.current.flyTo(coords, 15);
           
@@ -98,18 +92,14 @@ const MapComponentClient = forwardRef<MapComponentRef, MapComponentProps>(({ ale
     
     if (!mapRef.current || !coords) return;
     
-    console.log('Opening popup for alert:', alert.userId || (alert as any).user_id, 'at', coords);
-    console.log('Available markers:', markersRef.current.length);
     
     const marker = markersRef.current.find(m => {
       const markerPos = m.getLatLng();
       const isMatch = Math.abs(markerPos.lat - coords[0]) < 0.0001 && 
              Math.abs(markerPos.lng - coords[1]) < 0.0001;
-      console.log('Checking marker at', markerPos, 'vs alert at', coords, 'match:', isMatch);
       return isMatch;
     });
     
-    console.log('Found marker:', !!marker);
     
     if (marker) {
       // Close all other popups first
@@ -121,7 +111,6 @@ const MapComponentClient = forwardRef<MapComponentRef, MapComponentProps>(({ ale
           try {
             marker.openPopup();
             mapRef.current.invalidateSize();
-            console.log('Popup opened for alert:', alert.userId || (alert as any).user_id);
           } catch (error) {
             console.error('Error opening popup:', error);
           }

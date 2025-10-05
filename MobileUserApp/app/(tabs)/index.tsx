@@ -56,7 +56,6 @@ export default function HomeScreen() {
   };
 
   const handleSyncData = async () => {
-    console.log('Syncing data');
     try {
       setSyncStatus('syncing');
       const controller = new AbortController();
@@ -67,11 +66,6 @@ export default function HomeScreen() {
       });
       
       clearTimeout(timeoutId);
-      
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      
       const data = await response.json();
       console.log(data);
       
@@ -84,17 +78,7 @@ export default function HomeScreen() {
       }, 1000);
       
     } catch (error) {
-      console.error('Sync error:', error);
       setSyncStatus('error');
-      
-      setTimeout(() => {
-        setSyncStatus('idle');
-        if (error instanceof Error && error.name === 'AbortError') {
-          Alert.alert('Sync Failed', 'Request timed out. Please check your connection and try again.');
-        } else {
-          Alert.alert('Sync Failed', 'Failed to sync data. Please try again.');
-        }
-      }, 1000);
     }
   };   
 
@@ -108,35 +92,21 @@ export default function HomeScreen() {
       return;
     }
 
-    console.log(message);
-
     setIsMessageModalVisible(false);
     
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 5000);
     
-    try {
       const response = await fetch(`http://192.168.4.1/submit_sos?msg=${encodeURIComponent(message)}`, {
         method: 'GET',
         signal: controller.signal,
       });
       clearTimeout(timeoutId);
-
-      console.log(encodeURIComponent(message));
-      
-      // if (!response.ok) {
-      //   throw new Error(`HTTP error! status: ${response.status}`);
-      // }
       
       const data = await response.json();
-      console.log(data);
-      
+      console.log(data)
       Alert.alert('Help Sent', 'Help message has been sent to your emergency contacts.');
       setMessage(''); // Clear the message after sending
-    } catch (error) {
-      console.error('Error sending help message:', error);
-      Alert.alert('Error', 'Failed to send help message. Please try again.');
-    }
   };
 
   const handleLogout = async () => {
