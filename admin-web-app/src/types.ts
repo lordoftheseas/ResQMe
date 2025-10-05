@@ -14,6 +14,10 @@ export interface Alert {
         lat: number;
         lon: number;
     };
+    location?: {
+        latitude: number;
+        longitude: number;
+    };
     receivedAt: string;
     synced: boolean;
     messageType?: string;

@@ -23,28 +23,46 @@ const MapComponentClient = forwardRef<MapComponentRef, MapComponentProps>(({ ale
   const addMarkersToMap = useCallback((L: any) => {
     if (!mapRef.current) return;
 
+    console.log('Adding markers to map, alerts:', alerts);
+    console.log('Alerts with location:', alerts.filter(alert => alert.gps || alert.location));
+
     // Clear existing markers
     markersRef.current.forEach(marker => marker.remove());
     markersRef.current = [];
 
     // Add new markers
     alerts
-      .filter(alert => alert.gps)
+      .filter(alert => {
+        // Handle both old format (gps) and new format (location)
+        return alert.gps || alert.location;
+      })
       .forEach(alert => {
-        const marker = L.marker([alert.gps!.lat, alert.gps!.lon])
+        // Get coordinates from either old or new format
+        const coords = alert.gps ? [alert.gps.lat, alert.gps.lon] : 
+                      alert.location ? [alert.location.latitude, alert.location.longitude] : null;
+        
+        console.log('Processing alert:', alert.id, 'coords:', coords);
+        
+        if (!coords) {
+          console.log('No coordinates found for alert:', alert.id);
+          return;
+        }
+        
+        const marker = L.marker(coords)
           .addTo(mapRef.current)
           .bindPopup(`
             <div>
-              <b>User:</b> ${alert.userId}<br />
-              <b>Time:</b> ${new Date(alert.receivedAt).toLocaleTimeString()}
+              <b>User:</b> ${alert.userId || (alert as any).user_id}<br />
+              <b>Time:</b> ${new Date(alert.receivedAt || (alert as any).created_at).toLocaleTimeString()}
               ${alert.batteryLevel ? `<br /><b>Battery:</b> ${alert.batteryLevel}%` : ''}
+              ${(alert as any).message ? `<br /><b>Message:</b> ${(alert as any).message}` : ''}
             </div>
           `);
         
         marker.on('click', () => {
-          console.log('Marker clicked, zooming to:', alert.gps!.lat, alert.gps!.lon);
+          console.log('Marker clicked, zooming to:', coords[0], coords[1]);
           // Zoom to marker
-          mapRef.current.flyTo([alert.gps!.lat, alert.gps!.lon], 15);
+          mapRef.current.flyTo(coords, 15);
           
           if (onAlertClick) {
             onAlertClick(alert);
@@ -55,10 +73,16 @@ const MapComponentClient = forwardRef<MapComponentRef, MapComponentProps>(({ ale
       });
 
     // Fit bounds if there are alerts
-    if (alerts.filter(alert => alert.gps).length > 0) {
-      const bounds = alerts
-        .filter(alert => alert.gps)
-        .map(alert => [alert.gps!.lat, alert.gps!.lon] as [number, number]);
+    const alertsWithLocation = alerts.filter(alert => alert.gps || alert.location);
+    if (alertsWithLocation.length > 0) {
+      const bounds = alertsWithLocation.map(alert => {
+        if (alert.gps) {
+          return [alert.gps.lat, alert.gps.lon] as [number, number];
+        } else if (alert.location) {
+          return [alert.location.latitude, alert.location.longitude] as [number, number];
+        }
+        return null;
+      }).filter(coord => coord !== null) as [number, number][];
       
       if (bounds.length > 0) {
         mapRef.current.fitBounds(bounds, { padding: [20, 20] });
@@ -68,16 +92,20 @@ const MapComponentClient = forwardRef<MapComponentRef, MapComponentProps>(({ ale
 
   // Function to open popup for a specific alert
   const openPopupForAlert = useCallback((alert: Alert) => {
-    if (!mapRef.current || !alert.gps) return;
+    // Get coordinates from either old or new format
+    const coords = alert.gps ? [alert.gps.lat, alert.gps.lon] : 
+                  alert.location ? [alert.location.latitude, alert.location.longitude] : null;
     
-    console.log('Opening popup for alert:', alert.userId, 'at', alert.gps);
+    if (!mapRef.current || !coords) return;
+    
+    console.log('Opening popup for alert:', alert.userId || (alert as any).user_id, 'at', coords);
     console.log('Available markers:', markersRef.current.length);
     
     const marker = markersRef.current.find(m => {
       const markerPos = m.getLatLng();
-      const isMatch = Math.abs(markerPos.lat - alert.gps!.lat) < 0.0001 && 
-             Math.abs(markerPos.lng - alert.gps!.lon) < 0.0001;
-      console.log('Checking marker at', markerPos, 'vs alert at', alert.gps, 'match:', isMatch);
+      const isMatch = Math.abs(markerPos.lat - coords[0]) < 0.0001 && 
+             Math.abs(markerPos.lng - coords[1]) < 0.0001;
+      console.log('Checking marker at', markerPos, 'vs alert at', coords, 'match:', isMatch);
       return isMatch;
     });
     
@@ -93,7 +121,7 @@ const MapComponentClient = forwardRef<MapComponentRef, MapComponentProps>(({ ale
           try {
             marker.openPopup();
             mapRef.current.invalidateSize();
-            console.log('Popup opened for alert:', alert.userId);
+            console.log('Popup opened for alert:', alert.userId || (alert as any).user_id);
           } catch (error) {
             console.error('Error opening popup:', error);
           }
@@ -107,7 +135,7 @@ const MapComponentClient = forwardRef<MapComponentRef, MapComponentProps>(({ ale
       setTimeout(openPopup, 10);
       
       // Start the flyTo animation
-      mapRef.current.flyTo([alert.gps!.lat, alert.gps!.lon], 15);
+      mapRef.current.flyTo(coords, 15);
       
       // Ensure popup stays visible during and after animation
       setTimeout(openPopup, 100);
