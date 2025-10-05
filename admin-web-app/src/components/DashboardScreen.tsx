@@ -13,9 +13,8 @@ interface DashboardScreenProps {
 export default function DashboardScreen({ onLogout }: DashboardScreenProps) {
   const mapRef = useRef<MapComponentRef>(null);
   
-  const [sosAlerts, setSosAlerts] = useState<SosAlert[]>([
-    
-  ]);
+  const [sosAlerts, setSosAlerts] = useState<SosAlert[]>([]);
+  const [messages, setMessages] = useState<SosAlert[]>([]);
   const [broadcastMessage, setBroadcastMessage] = useState('');
   const [isOnline, setIsOnline] = useState(true);
   const [selectedAlert, setSelectedAlert] = useState<SosAlert | null>(null);
@@ -28,10 +27,20 @@ export default function DashboardScreen({ onLogout }: DashboardScreenProps) {
   React.useEffect(() => {
     const fetchAlerts = async () => {
       const alerts = await SupabaseDB.getSosSignalswithUser();
+      // console.log(alerts.data);
       setSosAlerts(alerts.data || []);
     };
     fetchAlerts();
-  }, [sosAlerts]);
+  }, []);
+
+  React.useEffect(() => {
+    const fetchMessages = async () => {
+      const messages = await SupabaseDB.getMessages();
+      console.log('Messages:', messages.data);
+      setMessages(messages.data || []);
+    };
+    fetchMessages();
+  }, []);
 
   const handleBroadcast = async () => {
     if (!broadcastMessage.trim()) {
@@ -108,11 +117,11 @@ export default function DashboardScreen({ onLogout }: DashboardScreenProps) {
     }
   };
 
-  const sortedAlerts = [...sosAlerts]
+  const sortedAlerts = (activeView === 'sos' ? sosAlerts : messages)
     .filter(alert => {
       // Filter based on active view
       if (activeView === 'sos' && alert.type === 'sos') return true;
-      if (activeView === 'messages' && alert.message && alert.type !== 'sos') return true;
+      if (activeView === 'messages' && alert.type === 'message') return true;
       return false;
     })
     .sort((a, b) => {
@@ -123,6 +132,18 @@ export default function DashboardScreen({ onLogout }: DashboardScreenProps) {
       const distanceB = calculateDistance(adminLat, adminLon, b.location.latitude, b.location.longitude);
       return distanceA - distanceB;
     });
+
+  // Debug logging
+  console.log('Active view:', activeView);
+  console.log('Messages:', messages);
+  console.log('SOS Alerts:', sosAlerts);
+  console.log('Sorted alerts:', sortedAlerts);
+  
+  // Debug user data in messages
+  if (activeView === 'messages' && messages.length > 0) {
+    console.log('First message user data:', messages[0].user);
+    console.log('First message userId:', messages[0].userId);
+  }
 
   return (
     <div className="h-full flex flex-col bg-gray-900">
@@ -271,11 +292,11 @@ export default function DashboardScreen({ onLogout }: DashboardScreenProps) {
                 <p className="text-gray-500">No requests detected yet.</p>
               ) : (
                 sortedAlerts.map(alert => {
-                  if (!alert.location) return null;
+                  if (!alert.message) return null;
                   
                   const adminLat = 42.3736;
                   const adminLon = -71.1097;
-                  const distance = calculateDistance(adminLat, adminLon, alert.location.latitude, alert.location.longitude);
+                  const distance = alert.location ? calculateDistance(adminLat, adminLon, alert.location.latitude, alert.location.longitude) : 0;
                   const timeSinceAlert = Date.now() - new Date(alert.created_at).getTime();
                   const severity = getSeverityLevel(timeSinceAlert, distance);
                   
@@ -291,7 +312,7 @@ export default function DashboardScreen({ onLogout }: DashboardScreenProps) {
                       <div className="flex justify-between items-center">
                         <div className="flex items-center space-x-2">
                           <p className="font-bold text-sm">
-                            {alert.user ? `${alert.user.first_name} ${alert.user.last_name}` : alert.user_id}
+                            {alert.user ? `${alert.user.first_name} ${alert.user.last_name}` : (alert.userId || alert.user_id)}
                           </p>
                           {alert.type === 'sos' && (
                             <span className="px-2 py-1 text-xs rounded-full bg-red-600 text-white font-bold">
@@ -307,11 +328,16 @@ export default function DashboardScreen({ onLogout }: DashboardScreenProps) {
                         </p>
                       </div>
                       <p className="text-xs text-gray-500">Distance: {distance.toFixed(1)} km</p>
-                      <p className="text-xs text-gray-500">
-                        Lat: {alert.location.latitude.toFixed(4)}, Lon: {alert.location.longitude.toFixed(4)}
-                      </p>
+                      {alert.location && (
+                        <p className="text-xs text-gray-500">
+                          Lat: {alert.location.latitude.toFixed(4)}, Lon: {alert.location.longitude.toFixed(4)}
+                        </p>
+                      )}
                       {alert.user?.phone_number && (
                         <p className="text-xs text-gray-500">Phone: {alert.user.phone_number}</p>
+                      )}
+                      {alert.batteryLevel && (
+                        <p className="text-xs text-gray-500">Battery: {alert.batteryLevel}%</p>
                       )}
                       {alert.message && alert.type !== 'sos' && (
                         <div className="mt-2 p-2 bg-gray-700 rounded text-xs">

@@ -24,16 +24,28 @@ export interface UserStats {
 
 export interface SosAlert {
   id: string;
+  userId?: string; // For messages display
   device_id: string;
   user_id: string;
   message: string;
-  type: 'sos';
+  type: 'sos' | 'message';
   status: 'online' | 'offline';
   location: {
     latitude: number;
     longitude: number;
   } | null;
   created_at: string;
+  receivedAt?: string; // For messages display
+  synced?: boolean; // For messages display
+  batteryLevel?: number; // For messages display
+  isSOS?: boolean; // For messages display
+  messageHistory?: {
+    id: string;
+    content: string;
+    timestamp: string;
+    isFromUser: boolean;
+    messageType: string;
+  }[];
   user?: {
     id: string;
     email: string;
@@ -358,8 +370,15 @@ export class SupabaseDB {
 
       if (!data) return { data: [], error: null };
 
-      // Remove duplicates by device_id (keep the latest entry for each device)
-      const uniqueSignals = data.reduce((acc: any[], current: any) => {
+      // First filter for "SOS Help Needed" and remove null user_id entries
+      const filteredSignals = data.filter(signal => {
+        return signal.message && 
+               signal.message.includes('SOS Help Needed') && 
+               signal.user_id !== null;
+      });
+
+      // Then apply duplicate constraint (keep latest entry for each device)
+      const uniqueSignals = filteredSignals.reduce((acc: any[], current: any) => {
         const existingIndex = acc.findIndex(item => item.device_id === current.device_id);
         if (existingIndex === -1) {
           acc.push(current);
@@ -371,27 +390,23 @@ export class SupabaseDB {
         return acc;
       }, []);
 
-      // Filter for SOS messages and structure the data
-
-      // Structure the data for all signals
-      const sosAlerts = uniqueSignals
-        .map(signal => ({
-          id: signal.id || signal.device_id,
-          device_id: signal.device_id,
-          user_id: signal.user_id,
-          message: signal.message,
-          type: signal.type || 'sos' as const,
-          status: signal.status as 'online' | 'offline',
-          location: signal.sensors?.gps || null,
-          created_at: signal.created_at,
-          user: signal.users ? {
-            id: signal.users.id,
-            email: signal.users.email,
-            first_name: signal.users.first_name,
-            last_name: signal.users.last_name,
-            phone_number: signal.users.phone_number
-          } : undefined
-        }));
+      const sosAlerts = uniqueSignals.map(signal => ({
+        id: signal.id || signal.device_id,
+        device_id: signal.device_id,
+        user_id: signal.user_id,
+        message: signal.message,
+        type: signal.type || 'sos' as const,
+        status: signal.status as 'online' | 'offline',
+        location: signal.sensors?.gps || null,
+        created_at: signal.created_at,
+        user: signal.users ? {
+          id: signal.users.id,
+          email: signal.users.email,
+          first_name: signal.users.first_name,
+          last_name: signal.users.last_name,
+          phone_number: signal.users.phone_number
+        } : undefined
+      }));
 
       return { data: sosAlerts, error: null };
     } catch (error) {
@@ -639,6 +654,125 @@ export class SupabaseDB {
       return { data: null, error };
     }
   }
+
+  /**
+   * Get non-SOS messages (regular messages without "SOS Help Needed")
+   */
+  static async getMessages(): Promise<{ data: SosAlert[] | null; error: any }> {
+    try {
+      const { data, error } = await supabase
+        .from('esp_signals')
+        .select(`*, users(*)`)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      if (!data) return { data: [], error: null };
+      
+      // Filter for non-SOS messages and remove null user_id entries
+      const filteredSignals = data.filter(signal => {
+        return signal.message && 
+               !signal.message.includes('SOS Help Needed') && 
+               signal.user_id !== null;
+      });
+
+      // Group messages by user_id to get unique users
+      const userGroups = new Map();
+      
+      filteredSignals.forEach(signal => {
+        const userId = signal.user_id;
+        
+        if (!userGroups.has(userId)) {
+          userGroups.set(userId, {
+            signals: [],
+            user: signal.users
+          });
+        }
+        userGroups.get(userId).signals.push(signal);
+      });
+
+      // Create message objects with history for each unique user
+      const uniqueUserMessages = Array.from(userGroups.entries()).map(([userId, group]) => {
+        const latestSignal = group.signals[0]; // Most recent message
+        const messageHistory = group.signals.map((signal: any, index: number) => ({
+          id: signal.id || `${signal.device_id}-${index}`,
+          content: signal.message,
+          timestamp: signal.created_at,
+          isFromUser: true,
+          messageType: 'text'
+        }));
+
+        return {
+          id: latestSignal.id || latestSignal.device_id,
+          userId: `User_${userId.slice(-3).padStart(3, '0')}`, // Format as User_001, User_002, etc.
+          device_id: latestSignal.device_id,
+          user_id: userId,
+          message: latestSignal.message,
+          type: 'message' as const,
+          status: latestSignal.status as 'online' | 'offline',
+          location: latestSignal.sensors?.gps || null,
+          created_at: latestSignal.created_at,
+          receivedAt: latestSignal.created_at,
+          synced: true,
+          batteryLevel: Math.floor(Math.random() * 100), // Random battery level for demo
+          isSOS: false,
+          messageHistory: messageHistory,
+          user: group.user ? {
+            id: group.user.id,
+            email: group.user.email,
+            first_name: group.user.first_name,
+            last_name: group.user.last_name,
+            phone_number: group.user.phone_number
+          } : undefined
+        };
+      });
+
+      console.log('Processed unique user messages:', uniqueUserMessages.slice(0, 2)); // Log first 2 processed messages
+      
+      return { data: uniqueUserMessages, error: null };
+    } catch (error) {
+      return { data: null, error };
+    }
+  }
+
+  /**
+   * Get chat history for a specific user
+   */
+  static async getChatHistory(userId: string): Promise<{ data: SosAlert[] | null; error: any }> {
+    try {
+      const { data, error } = await supabase
+        .from('esp_signals')
+        .select(`*, users(*)`)
+        .eq('user_id', userId)
+        .order('created_at', { ascending: true });
+
+      if (error) throw error;
+
+      if (!data) return { data: [], error: null };
+
+      const chatHistory = data.map(signal => ({
+        id: signal.id || signal.device_id,
+        device_id: signal.device_id,
+        user_id: signal.user_id,
+        message: signal.message,
+        type: signal.type || 'message' as const,
+        status: signal.status as 'online' | 'offline',
+        location: signal.sensors?.gps || null,
+        created_at: signal.created_at,
+        user: signal.users ? {
+          id: signal.users.id,
+          email: signal.users.email,
+          first_name: signal.users.first_name,
+          last_name: signal.users.last_name,
+          phone_number: signal.users.phone_number
+        } : undefined
+      }));
+
+      return { data: chatHistory, error: null };
+    } catch (error) {
+      return { data: null, error };
+    }
+  }
 }
 
 export const {
@@ -666,5 +800,7 @@ export const {
   updateMultipleUsers,
   createSosAlert,
   createBroadcastMessage,
-  createSosAlertInTable
+  createSosAlertInTable,
+  getMessages,
+  getChatHistory
 } = SupabaseDB;
