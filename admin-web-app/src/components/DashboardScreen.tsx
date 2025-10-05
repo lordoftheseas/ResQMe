@@ -355,15 +355,37 @@ export default function DashboardScreen({ onLogout }: DashboardScreenProps) {
           <div className="bg-gray-800 border-t border-gray-700 p-4">
             <h3 className="text-lg font-semibold text-white mb-3">Send Alert Message</h3>
             <div className="space-y-3">
-              <textarea
-                value={broadcastMessage}
-                onChange={(e) => setBroadcastMessage(e.target.value)}
-                placeholder="Enter emergency message to broadcast to all nearby devices..."
-                className="w-full h-20 px-3 py-2 bg-gray-900 border border-gray-600 rounded-md text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
-              />
+              <div className="relative">
+                <textarea
+                  value={broadcastMessage}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    if (value.length <= 55) {
+                      setBroadcastMessage(value);
+                    }
+                  }}
+                  placeholder="Enter emergency message to broadcast to all nearby devices..."
+                  className={`w-full h-20 px-3 py-2 bg-gray-900 border rounded-md text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:border-transparent resize-none ${
+                    broadcastMessage.length > 50 
+                      ? 'border-red-500 focus:ring-red-500' 
+                      : 'border-gray-600 focus:ring-blue-500'
+                  }`}
+                  maxLength={55}
+                />
+                <div className="absolute bottom-2 right-2 text-xs text-gray-400">
+                  <span className={broadcastMessage.length > 50 ? 'text-red-400' : 'text-gray-400'}>
+                    {broadcastMessage.length}/55
+                  </span>
+                </div>
+              </div>
               <button
                 onClick={handleBroadcast}
-                className="w-full py-2 px-4 bg-red-600 hover:bg-red-700 text-white rounded-md font-semibold transition-colors"
+                disabled={!broadcastMessage.trim() || broadcastMessage.length > 55}
+                className={`w-full py-2 px-4 rounded-md font-semibold transition-colors ${
+                  !broadcastMessage.trim() || broadcastMessage.length > 55
+                    ? 'bg-gray-600 text-gray-400 cursor-not-allowed'
+                    : 'bg-red-600 hover:bg-red-700 text-white'
+                }`}
               >
                 Send Emergency Alert
               </button>
