@@ -2,7 +2,6 @@
 
 import { Session, User } from '@supabase/supabase-js';
 import React, { createContext, useContext, useEffect, useState } from 'react';
-
 import { auth } from '@/lib/supabase';
 
 interface AuthContextType {
@@ -27,74 +26,51 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
 
-  // Timeout to prevent infinite loading
-  useEffect(() => {
-    const timeout = setTimeout(() => {
-      if (isLoading) {
-        console.log('Auth loading timeout, setting loading to false');
-        setIsLoading(false);
-      }
-    }, 10000); // 10 second timeout
-
-    return () => clearTimeout(timeout);
-  }, [isLoading]);
-
-  // Derived state
   const isAuthenticated = !!user;
 
   useEffect(() => {
-    const getInitialSession = async () => {
+    let mounted = true;
+
+    const loadSession = async () => {
       try {
         const { user } = await auth.getCurrentUser();
+        if (!mounted) return;
+
         setUser(user);
-        
         if (user) {
-          // Check if user is admin
-          console.log('Checking admin status for user:', user.email);
-          const { isAdmin: userIsAdmin, error } = await auth.isUserAdmin(user.id);
-          console.log('Admin check result:', { isAdmin: userIsAdmin, error });
-          setIsAdmin(userIsAdmin);
+          const { isAdmin: adminStatus } = await auth.isUserAdmin(user.id);
+          setIsAdmin(adminStatus);
         }
       } catch (error) {
-        console.error('Error getting initial session:', error);
+        console.error('Error loading session:', error);
       } finally {
-        setIsLoading(false);
+        if (mounted) setIsLoading(false);
       }
     };
 
-    getInitialSession();
+    loadSession();
 
-    const { data: { subscription } } = auth.onAuthStateChange(async (event, session) => {
-      console.log('Auth state changed:', event, session?.user?.email);
-      
-      // Handle different auth events
-      if (event === 'SIGNED_OUT') {
-        console.log('User signed out, clearing state');
-        setSession(null);
-        setUser(null);
-        setIsAdmin(false);
-        setIsLoading(false);
-        return;
-      }
-      
-      setSession(session);
+    const { data } = auth.onAuthStateChange(async (event, session) => {
+      console.log('Auth event:', event);
+
+      if (!mounted) return;
+
+      setSession(session ?? null);
       setUser(session?.user ?? null);
-      
+
       if (session?.user) {
-        // Check if user is admin
-        console.log('Checking admin status for user:', session.user.email);
-        const { isAdmin: userIsAdmin, error } = await auth.isUserAdmin(session.user.id);
-        console.log('Admin check result:', { isAdmin: userIsAdmin, error });
-        setIsAdmin(userIsAdmin);
+        const { isAdmin: adminStatus } = await auth.isUserAdmin(session.user.id);
+        setIsAdmin(adminStatus);
       } else {
         setIsAdmin(false);
       }
-      
+
       setIsLoading(false);
     });
 
     return () => {
-      subscription?.unsubscribe();
+      mounted = false;
+      data?.subscription?.unsubscribe();
     };
   }, []);
 
@@ -102,8 +78,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setIsLoading(true);
     try {
       const { error } = await auth.signUp(email, password, userData);
-      return { error };
-    } catch (error) {
       return { error };
     } finally {
       setIsLoading(false);
@@ -115,26 +89,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       const { error } = await auth.signIn(email, password);
       return { error };
-    } catch (error) {
-      return { error };
     } finally {
       setIsLoading(false);
     }
   };
 
   const signOut = async () => {
-    setIsLoading(true);
+    setUser(null);
+    setSession(null);
+    setIsAdmin(false);
+    setIsLoading(false);
+
     try {
       const { error } = await auth.signOut();
-      // Clear user state immediately
-      setUser(null);
-      setSession(null);
-      setIsAdmin(false);
       return { error };
     } catch (error) {
       return { error };
-    } finally {
-      setIsLoading(false);
     }
   };
 
@@ -166,19 +136,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ 
-      user, 
-      session, 
-      isLoading, 
-      isAdmin, 
-      isAuthenticated,
-      signUp, 
-      signIn, 
-      signOut, 
-      isUserAdmin,
-      getUserProfile,
-      updateUserProfile
-    }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        session,
+        isLoading,
+        isAdmin,
+        isAuthenticated,
+        signUp,
+        signIn,
+        signOut,
+        isUserAdmin,
+        getUserProfile,
+        updateUserProfile,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );

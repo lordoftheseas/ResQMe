@@ -377,6 +377,8 @@ export class SupabaseDB {
                signal.user_id !== null;
       });
 
+      console.log('filteredSignals', filteredSignals);
+
       // Then apply duplicate constraint (keep latest entry for each device)
       const uniqueSignals = filteredSignals.reduce((acc: any[], current: any) => {
         const existingIndex = acc.findIndex(item => item.device_id === current.device_id);

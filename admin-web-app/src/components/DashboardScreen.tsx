@@ -56,15 +56,11 @@ export default function DashboardScreen({ onLogout }: DashboardScreenProps) {
         },
         async (payload) => {
           console.log('payload', payload);
-          // Check if it's actually a SOS message
-          const isNewSos = (payload.new as any)?.message?.includes('SOS Help Needed');
-          const isOldSos = (payload.old as any)?.message?.includes('SOS Help Needed');
 
-          console.log('isNewSos', isNewSos, 'isOldSos', isOldSos);
-          
-          if (isNewSos || isOldSos) {
+          const isNewSos = (payload.new as any)?.message?.includes('SOS Help Needed');
+
+          if (isNewSos) {
             setIsLiveUpdating(true);
-            console.log('payload.eventType', payload.eventType);
             if (payload.eventType === 'DELETE') {
               // Remove the deleted item from state
               console.log('Removing deleted SOS alert from state');
@@ -89,6 +85,12 @@ export default function DashboardScreen({ onLogout }: DashboardScreenProps) {
             }
             
             setTimeout(() => setIsLiveUpdating(false), 1000);
+          }else{
+            if(payload.eventType === 'INSERT'){
+              const messages = await SupabaseDB.getMessages();
+              console.log('messages', messages.data);
+              setMessages(messages.data || []);
+            }
           }
         }
       )
