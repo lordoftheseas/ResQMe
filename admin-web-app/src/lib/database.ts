@@ -371,8 +371,6 @@ export class SupabaseDB {
         return acc;
       }, []);
 
-      console.log(uniqueSignals);
-
       // Filter for SOS messages and structure the data
       const sosAlerts = uniqueSignals
         .filter(signal => {

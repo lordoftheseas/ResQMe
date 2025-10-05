@@ -27,6 +27,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
 
+  // Timeout to prevent infinite loading
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      if (isLoading) {
+        console.log('Auth loading timeout, setting loading to false');
+        setIsLoading(false);
+      }
+    }, 10000); // 10 second timeout
+
+    return () => clearTimeout(timeout);
+  }, [isLoading]);
+
   // Derived state
   const isAuthenticated = !!user;
 
@@ -54,6 +66,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const { data: { subscription } } = auth.onAuthStateChange(async (event, session) => {
       console.log('Auth state changed:', event, session?.user?.email);
+      
+      // Handle different auth events
+      if (event === 'SIGNED_OUT') {
+        console.log('User signed out, clearing state');
+        setSession(null);
+        setUser(null);
+        setIsAdmin(false);
+        setIsLoading(false);
+        return;
+      }
+      
       setSession(session);
       setUser(session?.user ?? null);
       
@@ -103,6 +126,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setIsLoading(true);
     try {
       const { error } = await auth.signOut();
+      // Clear user state immediately
+      setUser(null);
+      setSession(null);
+      setIsAdmin(false);
       return { error };
     } catch (error) {
       return { error };
