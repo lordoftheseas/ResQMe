@@ -1,9 +1,10 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import React, { useState, useRef } from 'react';
 import MapComponent from './MapComponent';
 import { Alert, Message } from '../types';
 import { MapComponentRef } from './MapComponentClient';
+import { SosAlert, SupabaseDB } from '@/lib/database';
 
 interface DashboardScreenProps {
   onLogout: () => void;
@@ -12,164 +13,29 @@ interface DashboardScreenProps {
 export default function DashboardScreen({ onLogout }: DashboardScreenProps) {
   const mapRef = useRef<MapComponentRef>(null);
   
-  // Initialize with mock data immediately to prevent loading delays
-  const [alerts, setAlerts] = useState<Alert[]>([
-    {
-      id: 1,
-      userId: 'User_001',
-      gps: { lat: 42.3736 + 0.01, lon: -71.1097 + 0.01 },
-      receivedAt: new Date().toISOString(),
-      synced: true,
-      batteryLevel: 85,
-      isSOS: true,
-      message: 'Emergency! Need immediate help!'
-    },
-    {
-      id: 2,
-      userId: 'User_002',
-      gps: { lat: 42.3736 - 0.005, lon: -71.1097 + 0.02 },
-      receivedAt: new Date(Date.now() - 5 * 60 * 1000).toISOString(),
-      synced: true,
-      batteryLevel: 42,
-      isSOS: false,
-      message: 'Lost in the woods, need directions',
-      messageHistory: [
-        {
-          id: 1,
-          content: 'Hello, I need help finding my way back to the main road',
-          timestamp: new Date(Date.now() - 30 * 60 * 1000).toISOString(),
-          isFromUser: true,
-          messageType: 'text'
-        },
-        {
-          id: 2,
-          content: 'We received your message. Can you describe your surroundings?',
-          timestamp: new Date(Date.now() - 25 * 60 * 1000).toISOString(),
-          isFromUser: false,
-          messageType: 'text'
-        },
-        {
-          id: 3,
-          content: 'I see tall pine trees and a small stream nearby',
-          timestamp: new Date(Date.now() - 20 * 60 * 1000).toISOString(),
-          isFromUser: true,
-          messageType: 'text'
-        },
-        {
-          id: 4,
-          content: 'Based on your location, head north for about 200 meters to reach the main trail',
-          timestamp: new Date(Date.now() - 15 * 60 * 1000).toISOString(),
-          isFromUser: false,
-          messageType: 'text'
-        },
-        {
-          id: 5,
-          content: 'Lost in the woods, need directions',
-          timestamp: new Date(Date.now() - 5 * 60 * 1000).toISOString(),
-          isFromUser: true,
-          messageType: 'text'
-        }
-      ]
-    },
-    {
-      id: 3,
-      userId: 'User_003',
-      gps: { lat: 42.3736 + 0.02, lon: -71.1097 - 0.01 },
-      receivedAt: new Date(Date.now() - 15 * 60 * 1000).toISOString(),
-      synced: false,
-      batteryLevel: 78,
-      isSOS: true,
-      message: 'Car accident, need medical assistance'
-    },
-    {
-      id: 4,
-      userId: 'User_004',
-      gps: { lat: 42.3736 - 0.01, lon: -71.1097 - 0.02 },
-      receivedAt: new Date(Date.now() - 30 * 60 * 1000).toISOString(),
-      synced: true,
-      batteryLevel: 65,
-      isSOS: false,
-      message: 'Need help finding my way back to the main road',
-      messageHistory: [
-        {
-          id: 1,
-          content: 'I think I took a wrong turn and now I\'m lost',
-          timestamp: new Date(Date.now() - 45 * 60 * 1000).toISOString(),
-          isFromUser: true,
-          messageType: 'text'
-        },
-        {
-          id: 2,
-          content: 'Don\'t worry, we\'ll help you get back on track. What landmarks do you see?',
-          timestamp: new Date(Date.now() - 40 * 60 * 1000).toISOString(),
-          isFromUser: false,
-          messageType: 'text'
-        },
-        {
-          id: 3,
-          content: 'I can see a red barn in the distance and some power lines',
-          timestamp: new Date(Date.now() - 35 * 60 * 1000).toISOString(),
-          isFromUser: true,
-          messageType: 'text'
-        },
-        {
-          id: 4,
-          content: 'Need help finding my way back to the main road',
-          timestamp: new Date(Date.now() - 30 * 60 * 1000).toISOString(),
-          isFromUser: true,
-          messageType: 'text'
-        }
-      ]
-    },
-    {
-      id: 5,
-      userId: 'User_005',
-      gps: { lat: 42.3736 + 0.03, lon: -71.1097 + 0.03 },
-      receivedAt: new Date(Date.now() - 45 * 60 * 1000).toISOString(),
-      synced: true,
-      batteryLevel: 92,
-      isSOS: false,
-      message: 'Can someone help me with directions to the nearest gas station?',
-      messageHistory: [
-        {
-          id: 1,
-          content: 'My car is running low on fuel and I need to find a gas station',
-          timestamp: new Date(Date.now() - 60 * 60 * 1000).toISOString(),
-          isFromUser: true,
-          messageType: 'text'
-        },
-        {
-          id: 2,
-          content: 'We can help you find the nearest gas station. What\'s your current location?',
-          timestamp: new Date(Date.now() - 55 * 60 * 1000).toISOString(),
-          isFromUser: false,
-          messageType: 'text'
-        },
-        {
-          id: 3,
-          content: 'I\'m near the shopping mall on Main Street',
-          timestamp: new Date(Date.now() - 50 * 60 * 1000).toISOString(),
-          isFromUser: true,
-          messageType: 'text'
-        },
-        {
-          id: 4,
-          content: 'Can someone help me with directions to the nearest gas station?',
-          timestamp: new Date(Date.now() - 45 * 60 * 1000).toISOString(),
-          isFromUser: true,
-          messageType: 'text'
-        }
-      ]
-    }
+  const [sosAlerts, setSosAlerts] = useState<SosAlert[]>([
+    
   ]);
   const [broadcastMessage, setBroadcastMessage] = useState('');
   const [isOnline, setIsOnline] = useState(true);
-  const [selectedAlert, setSelectedAlert] = useState<Alert | null>(null);
+  const [selectedAlert, setSelectedAlert] = useState<SosAlert | null>(null);
   const [activeView, setActiveView] = useState<'sos' | 'messages'>('sos');
-  const [expandedMessage, setExpandedMessage] = useState<number | null>(null);
+  const [expandedMessage, setExpandedMessage] = useState<string | null>(null);
   const [selectedChatUser, setSelectedChatUser] = useState<Alert | null>(null);
   const [newMessage, setNewMessage] = useState('');
   const [isSyncing, setIsSyncing] = useState(false);
+
+  React.useEffect(() => {
+    console.log('DashboardScreen mounted');
+    const fetchAlerts = async () => {
+      const alerts = await SupabaseDB.getSosSignalswithUser();
+      console.log(alerts)
+      setSosAlerts(alerts.data || []);
+    };
+    fetchAlerts();
+  }, []);
+
+  console.log(sosAlerts);
 
   const handleBroadcast = async () => {
     if (!broadcastMessage.trim()) {
@@ -183,34 +49,15 @@ export default function DashboardScreen({ onLogout }: DashboardScreenProps) {
     setBroadcastMessage('');
   };
 
-  const handleSync = async () => {
-    setIsSyncing(true);
-    
-    try {
-      // Mock sync - replace with actual API call
-      console.log('Syncing data...');
-      
-      // Simulate API call delay
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      alert('Data synced successfully!');
-    } catch (error) {
-      console.error('Sync failed:', error);
-      alert('Sync failed. Please try again.');
-    } finally {
-      setIsSyncing(false);
-    }
-  };
-
-  const handleAlertClick = (alert: Alert) => {
+  const handleAlertClick = (alert: SosAlert) => {
     setSelectedAlert(alert);
     // Open popup on map for the clicked alert
     if (mapRef.current) {
-      mapRef.current.openPopupForAlert(alert);
+      mapRef.current.openPopupForAlert(alert as any);
     }
   };
 
-  const toggleMessageExpansion = (alertId: number) => {
+  const toggleMessageExpansion = (alertId: string) => {
     setExpandedMessage(expandedMessage === alertId ? null : alertId);
   };
 
@@ -220,33 +67,6 @@ export default function DashboardScreen({ onLogout }: DashboardScreenProps) {
 
   const closeChat = () => {
     setSelectedChatUser(null);
-    setNewMessage('');
-  };
-
-  const sendMessage = () => {
-    if (!newMessage.trim() || !selectedChatUser) return;
-    
-    // Add new message to the conversation
-    const newMsg: Message = {
-      id: Date.now(),
-      content: newMessage,
-      timestamp: new Date().toISOString(),
-      isFromUser: false,
-      messageType: 'text'
-    };
-
-    // Update the alert with the new message
-    setAlerts(prevAlerts => 
-      prevAlerts.map(alert => 
-        alert.id === selectedChatUser.id 
-          ? {
-              ...alert,
-              messageHistory: [...(alert.messageHistory || []), newMsg]
-            }
-          : alert
-      )
-    );
-
     setNewMessage('');
   };
 
@@ -278,19 +98,19 @@ export default function DashboardScreen({ onLogout }: DashboardScreenProps) {
     }
   };
 
-  const sortedAlerts = [...alerts]
+  const sortedAlerts = [...sosAlerts]
     .filter(alert => {
       // Filter based on active view
-      if (activeView === 'sos' && alert.isSOS) return true;
-      if (activeView === 'messages' && alert.message && !alert.isSOS) return true;
+      if (activeView === 'sos' && alert.type === 'sos') return true;
+      if (activeView === 'messages' && alert.message && alert.type !== 'sos') return true;
       return false;
     })
     .sort((a, b) => {
-      if (!a.gps || !b.gps) return 0;
+      if (!a.location || !b.location) return 0;
       const adminLat = 42.3736;
       const adminLon = -71.1097;
-      const distanceA = calculateDistance(adminLat, adminLon, a.gps.lat, a.gps.lon);
-      const distanceB = calculateDistance(adminLat, adminLon, b.gps.lat, b.gps.lon);
+      const distanceA = calculateDistance(adminLat, adminLon, a.location.latitude, a.location.longitude);
+      const distanceB = calculateDistance(adminLat, adminLon, b.location.latitude, b.location.longitude);
       return distanceA - distanceB;
     });
 
@@ -307,7 +127,7 @@ export default function DashboardScreen({ onLogout }: DashboardScreenProps) {
           </div>
           <div className="flex items-center space-x-4">
             <button
-              onClick={handleSync}
+              onClick={() => {}}
               disabled={isSyncing}
               className={`px-4 py-2 rounded-md text-sm font-medium flex items-center space-x-2 ${
                 isSyncing 
@@ -343,7 +163,7 @@ export default function DashboardScreen({ onLogout }: DashboardScreenProps) {
             <p className="text-sm text-gray-400">Real-time location of distress signals</p>
           </div>
           <div className="flex-1 bg-gray-700">
-            <MapComponent ref={mapRef} alerts={alerts} onAlertClick={handleAlertClick} />
+            <MapComponent ref={mapRef} alerts={sosAlerts as any} onAlertClick={handleAlertClick as any} />
           </div>
         </div>
 
@@ -436,38 +256,17 @@ export default function DashboardScreen({ onLogout }: DashboardScreenProps) {
                       </div>
                     ))}
                   </div>
-
-                  {/* Message Input */}
-                  <div className="p-3 bg-gray-700 rounded-b-lg">
-                    <div className="flex space-x-2">
-                      <input
-                        type="text"
-                        value={newMessage}
-                        onChange={(e) => setNewMessage(e.target.value)}
-                        placeholder="Type a message..."
-                        className="flex-1 px-3 py-2 bg-gray-800 text-white rounded-lg border border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
-                      />
-                      <button
-                        onClick={sendMessage}
-                        disabled={!newMessage.trim()}
-                        className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        Send
-                      </button>
-                    </div>
-                  </div>
                 </div>
               ) : sortedAlerts.length === 0 ? (
                 <p className="text-gray-500">No requests detected yet.</p>
               ) : (
                 sortedAlerts.map(alert => {
-                  if (!alert.gps) return null;
+                  if (!alert.location) return null;
                   
                   const adminLat = 42.3736;
                   const adminLon = -71.1097;
-                  const distance = calculateDistance(adminLat, adminLon, alert.gps.lat, alert.gps.lon);
-                  const timeSinceAlert = Date.now() - new Date(alert.receivedAt).getTime();
+                  const distance = calculateDistance(adminLat, adminLon, alert.location.latitude, alert.location.longitude);
+                  const timeSinceAlert = Date.now() - new Date(alert.created_at).getTime();
                   const severity = getSeverityLevel(timeSinceAlert, distance);
                   
                   return (
@@ -476,13 +275,15 @@ export default function DashboardScreen({ onLogout }: DashboardScreenProps) {
                       className={`p-3 rounded-md cursor-pointer border-l-4 hover:bg-gray-700 ${
                         selectedAlert?.id === alert.id ? 'bg-gray-700' : 'bg-gray-800'
                       }`}
-                      style={{ borderColor: alert.synced ? '#10B981' : '#F59E0B' }}
+                      style={{ borderColor: alert.status === 'online' ? '#10B981' : '#F59E0B' }}
                       onClick={() => handleAlertClick(alert)}
                     >
                       <div className="flex justify-between items-center">
                         <div className="flex items-center space-x-2">
-                          <p className="font-bold text-sm">{alert.userId}</p>
-                          {alert.isSOS && (
+                          <p className="font-bold text-sm">
+                            {alert.user ? `${alert.user.first_name} ${alert.user.last_name}` : alert.user_id}
+                          </p>
+                          {alert.type === 'sos' && (
                             <span className="px-2 py-1 text-xs rounded-full bg-red-600 text-white font-bold">
                               SOS
                             </span>
@@ -492,21 +293,19 @@ export default function DashboardScreen({ onLogout }: DashboardScreenProps) {
                           </span>
                         </div>
                         <p className="text-xs text-gray-400">
-                          {new Date(alert.receivedAt).toLocaleTimeString()}
+                          {new Date(alert.created_at).toLocaleTimeString()}
                         </p>
                       </div>
                       <p className="text-xs text-gray-500">Distance: {distance.toFixed(1)} km</p>
                       <p className="text-xs text-gray-500">
-                        Lat: {alert.gps.lat.toFixed(4)}, Lon: {alert.gps.lon.toFixed(4)}
+                        Lat: {alert.location.latitude.toFixed(4)}, Lon: {alert.location.longitude.toFixed(4)}
                       </p>
-                      {alert.batteryLevel && (
-                        <p className="text-xs text-gray-500">Battery: {alert.batteryLevel}%</p>
+                      {alert.user?.phone_number && (
+                        <p className="text-xs text-gray-500">Phone: {alert.user.phone_number}</p>
                       )}
-                      {alert.message && (
+                      {alert.message && alert.type !== 'sos' && (
                         <div className="mt-2 p-2 bg-gray-700 rounded text-xs">
-                          <p className="text-gray-300 font-medium">
-                            {alert.isSOS ? 'SOS Message:' : 'Message:'}
-                          </p>
+                          <p className="text-gray-300 font-medium">Message:</p>
                           <p className="text-gray-400">
                             {expandedMessage === alert.id ? alert.message : 
                              alert.message.length > 100 ? alert.message.substring(0, 100) + '...' : alert.message}
@@ -523,17 +322,15 @@ export default function DashboardScreen({ onLogout }: DashboardScreenProps) {
                                 {expandedMessage === alert.id ? 'Show Less' : 'Show More'}
                               </button>
                             )}
-                            {alert.messageHistory && (
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  openChat(alert);
-                                }}
-                                className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white text-xs rounded transition-colors"
-                              >
-                                View Chat
-                              </button>
-                            )}
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                openChat(alert as any);
+                              }}
+                              className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white text-xs rounded transition-colors"
+                            >
+                              View Chat
+                            </button>
                           </div>
                         </div>
                       )}

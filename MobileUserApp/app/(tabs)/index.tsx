@@ -23,7 +23,7 @@ export default function HomeScreen() {
   const handleSendSOS = async () => {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 5000);
-    const response = await fetch(`http://10.220.229.1/submit_sos?msg=SOS%20Help%20Needed`, {
+    const response = await fetch(`http://192.168.4.1/submit_sos?msg=SOS%20Help%20Needed`, {
       method: 'GET',
       signal: controller.signal,
     });
@@ -62,7 +62,7 @@ export default function HomeScreen() {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 5000);
       
-      const response = await fetch(`http://10.220.229.1/set_user_id?userid=${user?.id}`, {
+      const response = await fetch(`http://192.168.4.1/set_user_id?userid=${user?.id}`, {
         signal: controller.signal,
       });
       
@@ -116,15 +116,17 @@ export default function HomeScreen() {
     const timeoutId = setTimeout(() => controller.abort(), 5000);
     
     try {
-      const response = await fetch(`http://10.220.229.1/submit_sos?msg=${encodeURIComponent(message)}`, {
+      const response = await fetch(`http://192.168.4.1/submit_sos?msg=${encodeURIComponent(message)}`, {
         method: 'GET',
         signal: controller.signal,
       });
       clearTimeout(timeoutId);
+
+      console.log(encodeURIComponent(message));
       
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
+      // if (!response.ok) {
+      //   throw new Error(`HTTP error! status: ${response.status}`);
+      // }
       
       const data = await response.json();
       console.log(data);

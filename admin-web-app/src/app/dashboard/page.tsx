@@ -30,9 +30,8 @@ export default function Dashboard() {
     );
   }
 
-  // Show login redirect if not authenticated
   if (!user) {
-    return null; // Will redirect via useEffect
+    return null;
   }
 
   return (
