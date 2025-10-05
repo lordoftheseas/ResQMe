@@ -30,7 +30,6 @@ export default function DashboardScreen({ onLogout }: DashboardScreenProps) {
   React.useEffect(() => {
     const fetchAlerts = async () => {
       const alerts = await SupabaseDB.getSosSignalswithUser();
-      // console.log(alerts.data);
       setSosAlerts(alerts.data || []);
     };
     fetchAlerts();
@@ -39,15 +38,13 @@ export default function DashboardScreen({ onLogout }: DashboardScreenProps) {
   React.useEffect(() => {
     const fetchMessages = async () => {
       const messages = await SupabaseDB.getMessages();
-      // console.log('Messages:', messages.data);
       setMessages(messages.data || []);
     };
     fetchMessages();
   }, []);
 
-  // Live subscription for SOS alerts - simplified without filters first
+
   React.useEffect(() => {
-    console.log('Setting up SOS alerts subscription...');
     const sosSubscription = supabase
       .channel('sos-alerts')
       .on(
@@ -58,18 +55,16 @@ export default function DashboardScreen({ onLogout }: DashboardScreenProps) {
           table: 'esp_signals'
         },
         async (payload) => {
-          console.log('SOS Alert change detected:', payload);
-          console.log('Event type:', payload.eventType);
-          console.log('New data:', payload.new);
-          console.log('Old data:', payload.old);
-          
+          console.log('payload', payload);
           // Check if it's actually a SOS message
           const isNewSos = (payload.new as any)?.message?.includes('SOS Help Needed');
           const isOldSos = (payload.old as any)?.message?.includes('SOS Help Needed');
+
+          console.log('isNewSos', isNewSos, 'isOldSos', isOldSos);
           
           if (isNewSos || isOldSos) {
             setIsLiveUpdating(true);
-            
+            console.log('payload.eventType', payload.eventType);
             if (payload.eventType === 'DELETE') {
               // Remove the deleted item from state
               console.log('Removing deleted SOS alert from state');
@@ -102,119 +97,7 @@ export default function DashboardScreen({ onLogout }: DashboardScreenProps) {
       });
 
     return () => {
-      console.log('Unsubscribing from SOS alerts...');
       sosSubscription.unsubscribe();
-    };
-  }, []);
-
-  React.useEffect(() => {
-    console.log('Setting up messages subscription...');
-    const messagesSubscription = supabase
-      .channel('messages')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'esp_signals'
-        },
-        async (payload) => {
-          console.log('Message change detected:', payload);
-          console.log('Event type:', payload.eventType);
-          console.log('New data:', payload.new);
-          console.log('Old data:', payload.old);
-          
-          // Check if it's NOT a SOS message
-          const isNewMessage = (payload.new as any)?.message && !(payload.new as any)?.message?.includes('SOS Help Needed');
-          const isOldMessage = (payload.old as any)?.message && !(payload.old as any)?.message?.includes('SOS Help Needed');
-          
-          if (isNewMessage || isOldMessage) {
-            setIsLiveUpdating(true);
-            
-            if (payload.eventType === 'DELETE') {
-              // Remove the deleted item from state
-              console.log('Removing deleted message from state');
-              setMessages(prevMessages => 
-                prevMessages.filter(message => message.id !== (payload.old as any)?.id)
-              );
-            } else if (payload.eventType === 'INSERT') {
-              // Add the new item to state
-              console.log('Adding new message to state');
-              const messages = await SupabaseDB.getMessages();
-              setMessages(messages.data || []);
-            } else if (payload.eventType === 'UPDATE') {
-              // Update the existing item in state
-              console.log('Updating message in state');
-              const messages = await SupabaseDB.getMessages();
-              setMessages(messages.data || []);
-            } else {
-              // Fallback: refresh entire list
-              console.log('Refreshing entire messages list');
-              const messages = await SupabaseDB.getMessages();
-              setMessages(messages.data || []);
-            }
-            
-            setTimeout(() => setIsLiveUpdating(false), 1000);
-          }
-        }
-      )
-      .subscribe((status) => {
-        console.log('Messages subscription status:', status);
-      });
-
-    return () => {
-      console.log('Unsubscribing from messages...');
-      messagesSubscription.unsubscribe();
-    };
-  }, []);
-
-  // Live subscription for sos_alerts table (broadcast messages)
-  React.useEffect(() => {
-    console.log('Setting up sos_alerts table subscription...');
-    const sosAlertsSubscription = supabase
-      .channel('sos-alerts-table')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'sos_alerts'
-        },
-        async (payload) => {
-          console.log('SOS Alerts table change detected:', payload);
-          console.log('Event type:', payload.eventType);
-          console.log('New data:', payload.new);
-          console.log('Old data:', payload.old);
-          
-          setIsLiveUpdating(true);
-          
-          if (payload.eventType === 'DELETE') {
-            console.log('Broadcast message deleted - refreshing both lists');
-          } else if (payload.eventType === 'INSERT') {
-            console.log('New broadcast message added - refreshing both lists');
-          } else if (payload.eventType === 'UPDATE') {
-            console.log('Broadcast message updated - refreshing both lists');
-          } else {
-            console.log('Broadcast message change - refreshing both lists');
-          }
-          
-          // Refresh both SOS alerts and messages when broadcast messages change
-          const alerts = await SupabaseDB.getSosSignalswithUser();
-          setSosAlerts(alerts.data || []);
-          
-          const messages = await SupabaseDB.getMessages();
-          setMessages(messages.data || []);
-          
-          setTimeout(() => setIsLiveUpdating(false), 1000);
-        }
-      )
-      .subscribe((status) => {
-        console.log('SOS Alerts table subscription status:', status);
-      });
-
-    return () => {
-      console.log('Unsubscribing from sos_alerts table...');
-      sosAlertsSubscription.unsubscribe();
     };
   }, []);
 
@@ -270,44 +153,6 @@ export default function DashboardScreen({ onLogout }: DashboardScreenProps) {
     setNewMessage('');
   };
 
-  // Test function to trigger subscription
-  const testSubscription = async () => {
-    console.log('Testing subscription by inserting test data...');
-    try {
-      // First test basic connection
-      const { data: testData, error: testError } = await supabase
-        .from('esp_signals')
-        .select('*')
-        .limit(1);
-      
-      console.log('Basic connection test:', { testData, testError });
-      
-      if (testError) {
-        console.error('Connection test failed:', testError);
-        return;
-      }
-      
-      // Now try to insert test data
-      const { data, error } = await supabase
-        .from('esp_signals')
-        .insert({
-          device_id: 'test-device-' + Date.now(),
-          user_id: 'test-user',
-          message: 'Test message for subscription',
-          type: 'message',
-          status: 'online',
-          sensors: { gps: { latitude: 42.3736, longitude: -71.1097 } }
-        });
-      
-      if (error) {
-        console.error('Test insert error:', error);
-      } else {
-        console.log('Test data inserted successfully:', data);
-      }
-    } catch (error) {
-      console.error('Test subscription error:', error);
-    }
-  };
 
   const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
     const R = 6371; // Earth's radius in kilometers
@@ -389,12 +234,7 @@ export default function DashboardScreen({ onLogout }: DashboardScreenProps) {
                 <span>Sync Data</span>
               )}
             </button>
-            <button
-              onClick={testSubscription}
-              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm font-medium"
-            >
-              Test Subscription
-            </button>
+            
             <button
               onClick={onLogout}
               className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-md text-sm font-medium"
