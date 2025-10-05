@@ -18,15 +18,19 @@ export default function Dashboard() {
 
   const handleLogout = async () => {
     try {
-      await signOut();
-      // Force redirect to home page
-      router.push('/');
-      // Force a page reload to ensure clean state
-      window.location.href = '/';
+      const { error } = await signOut();
+      if (error) {
+        console.error('Logout error:', error);
+      }
     } catch (error) {
       console.error('Logout error:', error);
-      // Still redirect even if there's an error
+    } finally {
+      // Always redirect to home page, regardless of errors
       router.push('/');
+      // Force a page reload to ensure clean state
+      setTimeout(() => {
+        window.location.href = '/';
+      }, 100);
     }
   };
 
