@@ -123,21 +123,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const signOut = async () => {
+    setIsLoading(true);
     try {
       const { error } = await auth.signOut();
       // Clear user state immediately
       setUser(null);
       setSession(null);
       setIsAdmin(false);
-      setIsLoading(false);
       return { error };
     } catch (error) {
-      // Even if there's an error, clear the state
-      setUser(null);
-      setSession(null);
-      setIsAdmin(false);
-      setIsLoading(false);
       return { error };
+    } finally {
+      setIsLoading(false);
     }
   };
 

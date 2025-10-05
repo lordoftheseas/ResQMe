@@ -66,10 +66,14 @@ export const auth = {
   // Sign out
   async signOut() {
     try {
+      console.log('Supabase auth: Starting signOut...');
       const { error } = await supabase.auth.signOut();
+      console.log('Supabase auth: signOut result:', { error });
+      
       if (error) throw error;
       return { error: null };
     } catch (error) {
+      console.error('Supabase auth: signOut error:', error);
       return { error };
     }
   },

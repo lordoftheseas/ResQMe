@@ -17,21 +17,8 @@ export default function Dashboard() {
   }, [user, isLoading, router]);
 
   const handleLogout = async () => {
-    try {
-      const { error } = await signOut();
-      if (error) {
-        console.error('Logout error:', error);
-      }
-    } catch (error) {
-      console.error('Logout error:', error);
-    } finally {
-      // Always redirect to home page, regardless of errors
-      router.push('/');
-      // Force a page reload to ensure clean state
-      setTimeout(() => {
-        window.location.href = '/';
-      }, 100);
-    }
+    await signOut();
+    router.push('/');
   };
 
   // Show loading during auth check
@@ -43,8 +30,9 @@ export default function Dashboard() {
     );
   }
 
+  // Show login redirect if not authenticated
   if (!user) {
-    return null;
+    return null; // Will redirect via useEffect
   }
 
   return (
