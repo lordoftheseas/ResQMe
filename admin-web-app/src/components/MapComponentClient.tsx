@@ -20,7 +20,7 @@ const MapComponentClient = forwardRef<MapComponentRef, MapComponentProps>(({ ale
   const isInitializedRef = useRef(false);
 
   // Helper function to add markers to map
-  const addMarkersToMap = useCallback((L: any) => {
+  const addMarkersToMap = useCallback((L: any, shouldFitBounds = false) => {
     if (!mapRef.current) return;
 
     // Clear existing markers
@@ -54,9 +54,16 @@ const MapComponentClient = forwardRef<MapComponentRef, MapComponentProps>(({ ale
             </div>
           `);
         
+        // Store the alert data with the marker for reliable identification
+        (marker as any).alertData = alert;
+        
         marker.on('click', () => {
-          // Zoom to marker
-          mapRef.current.flyTo(coords, 15);
+          // Zoom to marker and open popup on single click
+          const currentZoom = mapRef.current.getZoom();
+          // Only zoom in if we're zoomed out too far, otherwise use current zoom
+          const targetZoom = currentZoom < 10 ? 10 : currentZoom;
+          mapRef.current.flyTo(coords, targetZoom);
+          marker.openPopup();
           
           if (onAlertClick) {
             onAlertClick(alert);
@@ -66,20 +73,22 @@ const MapComponentClient = forwardRef<MapComponentRef, MapComponentProps>(({ ale
         markersRef.current.push(marker);
       });
 
-    // Fit bounds if there are alerts
-    const alertsWithLocation = alerts.filter(alert => alert.gps || alert.location);
-    if (alertsWithLocation.length > 0) {
-      const bounds = alertsWithLocation.map(alert => {
-        if (alert.gps) {
-          return [alert.gps.lat, alert.gps.lon] as [number, number];
-        } else if (alert.location) {
-          return [alert.location.latitude, alert.location.longitude] as [number, number];
+    // Only fit bounds if explicitly requested (e.g., on initial load)
+    if (shouldFitBounds) {
+      const alertsWithLocation = alerts.filter(alert => alert.gps || alert.location);
+      if (alertsWithLocation.length > 0) {
+        const bounds = alertsWithLocation.map(alert => {
+          if (alert.gps) {
+            return [alert.gps.lat, alert.gps.lon] as [number, number];
+          } else if (alert.location) {
+            return [alert.location.latitude, alert.location.longitude] as [number, number];
+          }
+          return null;
+        }).filter(coord => coord !== null) as [number, number][];
+        
+        if (bounds.length > 0) {
+          mapRef.current.fitBounds(bounds, { padding: [20, 20] });
         }
-        return null;
-      }).filter(coord => coord !== null) as [number, number][];
-      
-      if (bounds.length > 0) {
-        mapRef.current.fitBounds(bounds, { padding: [20, 20] });
       }
     }
   }, [alerts, onAlertClick]);
@@ -92,12 +101,10 @@ const MapComponentClient = forwardRef<MapComponentRef, MapComponentProps>(({ ale
     
     if (!mapRef.current || !coords) return;
     
-    
+    // Find marker by stored alert data instead of coordinates
     const marker = markersRef.current.find(m => {
-      const markerPos = m.getLatLng();
-      const isMatch = Math.abs(markerPos.lat - coords[0]) < 0.0001 && 
-             Math.abs(markerPos.lng - coords[1]) < 0.0001;
-      return isMatch;
+      const storedAlert = (m as any).alertData;
+      return storedAlert && storedAlert.id === alert.id;
     });
     
     
@@ -124,7 +131,10 @@ const MapComponentClient = forwardRef<MapComponentRef, MapComponentProps>(({ ale
       setTimeout(openPopup, 10);
       
       // Start the flyTo animation
-      mapRef.current.flyTo(coords, 15);
+      const currentZoom = mapRef.current.getZoom();
+      // Only zoom in if we're zoomed out too far, otherwise use current zoom
+      const targetZoom = currentZoom < 10 ? 10 : currentZoom;
+      mapRef.current.flyTo(coords, targetZoom);
       
       // Ensure popup stays visible during and after animation
       setTimeout(openPopup, 100);
@@ -165,8 +175,8 @@ const MapComponentClient = forwardRef<MapComponentRef, MapComponentProps>(({ ale
 
       isInitializedRef.current = true;
       
-      // Add markers immediately after map initialization
-      addMarkersToMap(L.default);
+      // Add markers immediately after map initialization with bounds fitting
+      addMarkersToMap(L.default, true);
     });
   }, [isMounted]);
 
@@ -176,7 +186,8 @@ const MapComponentClient = forwardRef<MapComponentRef, MapComponentProps>(({ ale
 
     // Import Leaflet to get the marker function
     import('leaflet').then((L) => {
-      addMarkersToMap(L.default);
+      // Don't fit bounds when updating markers (e.g., when toggling views)
+      addMarkersToMap(L.default, false);
     });
   }, [alerts, onAlertClick, addMarkersToMap]);
 
