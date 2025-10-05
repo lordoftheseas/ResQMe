@@ -251,7 +251,7 @@ export default function DashboardScreen({ onLogout }: DashboardScreenProps) {
                       <div>
                         <h4 className="text-white font-medium">{selectedChatUser.userId}</h4>
                         <p className="text-xs text-gray-400">
-                          {selectedChatUser.batteryLevel && `Battery: ${selectedChatUser.batteryLevel}%`}
+                          {/* Battery status removed */}
                         </p>
                       </div>
                     </div>
@@ -336,9 +336,7 @@ export default function DashboardScreen({ onLogout }: DashboardScreenProps) {
                       {alert.user?.phone_number && (
                         <p className="text-xs text-gray-500">Phone: {alert.user.phone_number}</p>
                       )}
-                      {alert.batteryLevel && (
-                        <p className="text-xs text-gray-500">Battery: {alert.batteryLevel}%</p>
-                      )}
+                      {/* Battery status removed */}
                       {alert.message && alert.type !== 'sos' && (
                         <div className="mt-2 p-2 bg-gray-700 rounded text-xs">
                           <p className="text-gray-300 font-medium">Message:</p>
