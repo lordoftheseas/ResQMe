@@ -6,8 +6,8 @@ import ast
 ser = serial.Serial('COM5', 115200, timeout=1)
 time.sleep(2) 
 
-supabaseUrl : str = 'https://rpwjnihpvrhhknnzvhav.supabase.co/';
-supabaseAnonKey : str = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJwd2puaWhwdnJoaGtubnp2aGF2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk1NDk1NzAsImV4cCI6MjA3NTEyNTU3MH0.SE-NNz7nj49qkCsBfUMfUchV6gbvcf03Pm80H6_P3zw';
+supabaseUrl : str = '';
+supabaseAnonKey : str = '';
 supabase: Client = create_client(supabaseUrl, supabaseAnonKey)
 
 response = (supabase.table("sos_alerts")).select("*").order("created_at", desc=True).execute()
